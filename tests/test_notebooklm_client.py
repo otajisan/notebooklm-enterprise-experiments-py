@@ -8,7 +8,8 @@ from google.oauth2 import service_account
 
 # モジュール全体をモックする前にインポート
 with patch(
-    "notebooklm_enterprise_experiments_py.infrastructure.external.notebooklm_client.discoveryengine"
+    "notebooklm_enterprise_experiments_py.infrastructure.external.notebooklm_client.discoveryengine",
+    create=True,
 ) as mock_discoveryengine:
     mock_discoveryengine.NotebookServiceClient = Mock
     mock_discoveryengine.ConversationalSearchServiceClient = Mock
@@ -40,10 +41,12 @@ class TestNotebookLMClient:
             patch(
                 "notebooklm_enterprise_experiments_py.infrastructure.external.notebooklm_client.discoveryengine.NotebookServiceClient",
                 return_value=Mock(),
+                create=True,
             ),
             patch(
                 "notebooklm_enterprise_experiments_py.infrastructure.external.notebooklm_client.discoveryengine.ConversationalSearchServiceClient",
                 return_value=Mock(),
+                create=True,
             ),
         ):
             client = NotebookLMClient(
@@ -61,10 +64,12 @@ class TestNotebookLMClient:
             patch(
                 "notebooklm_enterprise_experiments_py.infrastructure.external.notebooklm_client.discoveryengine.NotebookServiceClient",
                 return_value=Mock(),
+                create=True,
             ),
             patch(
                 "notebooklm_enterprise_experiments_py.infrastructure.external.notebooklm_client.discoveryengine.ConversationalSearchServiceClient",
                 return_value=Mock(),
+                create=True,
             ),
         ):
             client = NotebookLMClient(
@@ -94,10 +99,12 @@ class TestNotebookLMClient:
             patch(
                 "notebooklm_enterprise_experiments_py.infrastructure.external.notebooklm_client.discoveryengine.NotebookServiceClient",
                 return_value=Mock(),
+                create=True,
             ),
             patch(
                 "notebooklm_enterprise_experiments_py.infrastructure.external.notebooklm_client.discoveryengine.ConversationalSearchServiceClient",
                 return_value=Mock(),
+                create=True,
             ),
         ):
             client = NotebookLMClient(
@@ -128,10 +135,12 @@ class TestNotebookLMClient:
             patch(
                 "notebooklm_enterprise_experiments_py.infrastructure.external.notebooklm_client.discoveryengine.NotebookServiceClient",
                 return_value=Mock(),
+                create=True,
             ),
             patch(
                 "notebooklm_enterprise_experiments_py.infrastructure.external.notebooklm_client.discoveryengine.ConversationalSearchServiceClient",
                 return_value=Mock(),
+                create=True,
             ),
         ):
             client = NotebookLMClient(
@@ -174,10 +183,27 @@ class TestNotebookLMClient:
             patch(
                 "notebooklm_enterprise_experiments_py.infrastructure.external.notebooklm_client.discoveryengine.NotebookServiceClient",
                 return_value=mock_notebook_client,
+                create=True,
             ),
             patch(
                 "notebooklm_enterprise_experiments_py.infrastructure.external.notebooklm_client.discoveryengine.ConversationalSearchServiceClient",
                 return_value=Mock(),
+                create=True,
+            ),
+            patch(
+                "notebooklm_enterprise_experiments_py.infrastructure.external.notebooklm_client.discoveryengine.Notebook",
+                side_effect=lambda **kwargs: Mock(
+                    display_name=kwargs.get("display_name")
+                ),
+                create=True,
+            ),
+            patch(
+                "notebooklm_enterprise_experiments_py.infrastructure.external.notebooklm_client.discoveryengine.CreateNotebookRequest",
+                side_effect=lambda **kwargs: Mock(
+                    notebook_id=kwargs.get("notebook_id"),
+                    notebook=kwargs.get("notebook"),
+                ),
+                create=True,
             ),
         ):
             client = NotebookLMClient(
@@ -194,8 +220,9 @@ class TestNotebookLMClient:
             assert result == mock_response
             mock_notebook_client.create_notebook.assert_called_once()
             call_args = mock_notebook_client.create_notebook.call_args
-            assert call_args[1]["request"].notebook_id == "test-notebook"
-            assert call_args[1]["request"].notebook.display_name == "テストノートブック"
+            request = call_args[1]["request"]
+            assert request.notebook_id == "test-notebook"
+            assert request.notebook.display_name == "テストノートブック"
 
     def test_add_sources(self, mock_credentials: service_account.Credentials) -> None:
         """ソースを追加できる。"""
@@ -210,10 +237,22 @@ class TestNotebookLMClient:
             patch(
                 "notebooklm_enterprise_experiments_py.infrastructure.external.notebooklm_client.discoveryengine.NotebookServiceClient",
                 return_value=mock_notebook_client,
+                create=True,
             ),
             patch(
                 "notebooklm_enterprise_experiments_py.infrastructure.external.notebooklm_client.discoveryengine.ConversationalSearchServiceClient",
                 return_value=Mock(),
+                create=True,
+            ),
+            patch(
+                "notebooklm_enterprise_experiments_py.infrastructure.external.notebooklm_client.discoveryengine.ImportNotebookSourcesRequest",
+                side_effect=lambda **kwargs: Mock(gcs_source=kwargs.get("gcs_source")),
+                create=True,
+            ),
+            patch(
+                "notebooklm_enterprise_experiments_py.infrastructure.external.notebooklm_client.discoveryengine.GcsSource",
+                side_effect=lambda **kwargs: Mock(uris=kwargs.get("uris", [])),
+                create=True,
             ),
         ):
             client = NotebookLMClient(
@@ -229,9 +268,10 @@ class TestNotebookLMClient:
 
             mock_notebook_client.import_notebook_sources.assert_called_once()
             call_args = mock_notebook_client.import_notebook_sources.call_args
-            assert len(call_args[1]["request"].gcs_source.uris) == 2
-            assert "gs://bucket/doc1.pdf" in call_args[1]["request"].gcs_source.uris
-            assert "gs://bucket/doc2.pdf" in call_args[1]["request"].gcs_source.uris
+            request = call_args[1]["request"]
+            assert len(request.gcs_source.uris) == 2
+            assert "gs://bucket/doc1.pdf" in request.gcs_source.uris
+            assert "gs://bucket/doc2.pdf" in request.gcs_source.uris
 
     def test_ask(self, mock_credentials: service_account.Credentials) -> None:
         """質問できる。"""
@@ -247,10 +287,25 @@ class TestNotebookLMClient:
             patch(
                 "notebooklm_enterprise_experiments_py.infrastructure.external.notebooklm_client.discoveryengine.NotebookServiceClient",
                 return_value=Mock(),
+                create=True,
             ),
             patch(
                 "notebooklm_enterprise_experiments_py.infrastructure.external.notebooklm_client.discoveryengine.ConversationalSearchServiceClient",
                 return_value=mock_conversational_client,
+                create=True,
+            ),
+            patch(
+                "notebooklm_enterprise_experiments_py.infrastructure.external.notebooklm_client.discoveryengine.AnswerRequest",
+                side_effect=lambda **kwargs: Mock(
+                    query=kwargs.get("query"),
+                    answer_generation_spec=kwargs.get("answer_generation_spec"),
+                ),
+                create=True,
+            ),
+            patch(
+                "notebooklm_enterprise_experiments_py.infrastructure.external.notebooklm_client.discoveryengine.Query",
+                side_effect=lambda **kwargs: Mock(text=kwargs.get("text")),
+                create=True,
             ),
         ):
             client = NotebookLMClient(
@@ -267,4 +322,5 @@ class TestNotebookLMClient:
             assert result == mock_response
             mock_conversational_client.answer.assert_called_once()
             call_args = mock_conversational_client.answer.call_args
-            assert call_args[1]["request"].query.text == "最新の売上状況は？"
+            request = call_args[1]["request"]
+            assert request.query.text == "最新の売上状況は？"
