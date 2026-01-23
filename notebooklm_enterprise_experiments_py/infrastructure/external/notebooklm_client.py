@@ -34,7 +34,7 @@ class NotebookLMClient:
         if credentials is None:
             credentials = self._load_credentials()
 
-        self.notebook_client = discoveryengine.NotebookServiceClient(
+        self.notebook_client = discoveryengine.NotebookServiceClient(  # type: ignore[attr-defined]
             credentials=credentials
         )
         self.conversational_search_client = (
@@ -88,9 +88,9 @@ class NotebookLMClient:
         """
         parent = f"projects/{self.project_id}/locations/{self.location}"
 
-        notebook = discoveryengine.Notebook(display_name=display_name)
+        notebook = discoveryengine.Notebook(display_name=display_name)  # type: ignore[attr-defined]
 
-        request = discoveryengine.CreateNotebookRequest(
+        request = discoveryengine.CreateNotebookRequest(  # type: ignore[attr-defined]
             parent=parent,
             notebook=notebook,
             notebook_id=notebook_id,
@@ -115,9 +115,9 @@ class NotebookLMClient:
             f"notebooks/{notebook_id}"
         )
 
-        request = discoveryengine.ImportNotebookSourcesRequest(
+        request = discoveryengine.ImportNotebookSourcesRequest(  # type: ignore[attr-defined]
             parent=name,
-            gcs_source=discoveryengine.GcsSource(uris=source_uris),
+            gcs_source=discoveryengine.GcsSource(uris=source_uris),  # type: ignore[attr-defined]
         )
 
         operation = self.notebook_client.import_notebook_sources(request=request)
@@ -145,15 +145,15 @@ class NotebookLMClient:
             f"servingConfigs/default_serving_config"
         )
 
-        request = discoveryengine.AnswerRequest(
+        request = discoveryengine.AnswerRequest(  # type: ignore[attr-defined]
             serving_config=serving_config,
-            query=discoveryengine.Query(text=query_text),
-            answer_generation_spec=discoveryengine.AnswerRequest.AnswerGenerationSpec(
+            query=discoveryengine.Query(text=query_text),  # type: ignore[attr-defined]
+            answer_generation_spec=discoveryengine.AnswerRequest.AnswerGenerationSpec(  # type: ignore[attr-defined]
                 include_citations=include_citations
             )
             if include_citations
             else None,
         )
 
-        response = self.conversational_search_client.answer(request=request)
+        response = self.conversational_search_client.answer(request=request)  # type: ignore[attr-defined]
         return response
