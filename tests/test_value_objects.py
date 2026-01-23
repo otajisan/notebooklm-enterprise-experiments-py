@@ -66,7 +66,9 @@ class TestCitation:
 
     def test_non_string_source_title_raises_error(self) -> None:
         """文字列以外のsource_titleはエラーを発生させる。"""
-        with pytest.raises(ValueError, match="source_titleは文字列である必要があります"):
+        with pytest.raises(
+            ValueError, match="source_titleは文字列である必要があります"
+        ):
             Citation(
                 source_title=123,  # type: ignore[arg-type]
                 content="test",
@@ -119,7 +121,9 @@ class TestAnswer:
 
     def test_invalid_citation_type_raises_error(self) -> None:
         """Citation以外の要素を含むcitationsはエラーを発生させる。"""
-        with pytest.raises(ValueError, match="citationsの要素はCitationである必要があります"):
+        with pytest.raises(
+            ValueError, match="citationsの要素はCitationである必要があります"
+        ):
             Answer(
                 answer_text="test",
                 citations=("invalid",),  # type: ignore[arg-type]

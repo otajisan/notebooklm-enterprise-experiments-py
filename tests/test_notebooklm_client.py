@@ -1,6 +1,5 @@
 """NotebookLMClientのテスト。"""
 
-import json
 from pathlib import Path
 from unittest.mock import MagicMock, Mock, patch
 
@@ -21,7 +20,7 @@ with patch(
     mock_discoveryengine.Query = Mock
     mock_discoveryengine.AnswerRequest.AnswerGenerationSpec = Mock
 
-from notebooklm_enterprise_experiments_py.infrastructure.external.notebooklm_client import (
+from notebooklm_enterprise_experiments_py.infrastructure.external.notebooklm_client import (  # noqa: E501
     NotebookLMClient,
 )
 
@@ -35,16 +34,17 @@ class TestNotebookLMClient:
         return Mock(spec=service_account.Credentials)
 
     @pytest.fixture
-    def client(
-        self, mock_credentials: service_account.Credentials
-    ) -> NotebookLMClient:
+    def client(self, mock_credentials: service_account.Credentials) -> NotebookLMClient:
         """NotebookLMClientのインスタンスを作成する。"""
-        with patch(
-            "notebooklm_enterprise_experiments_py.infrastructure.external.notebooklm_client.discoveryengine.NotebookServiceClient",
-            return_value=Mock(),
-        ), patch(
-            "notebooklm_enterprise_experiments_py.infrastructure.external.notebooklm_client.discoveryengine.ConversationalSearchServiceClient",
-            return_value=Mock(),
+        with (
+            patch(
+                "notebooklm_enterprise_experiments_py.infrastructure.external.notebooklm_client.discoveryengine.NotebookServiceClient",
+                return_value=Mock(),
+            ),
+            patch(
+                "notebooklm_enterprise_experiments_py.infrastructure.external.notebooklm_client.discoveryengine.ConversationalSearchServiceClient",
+                return_value=Mock(),
+            ),
         ):
             client = NotebookLMClient(
                 project_id="test-project",
@@ -53,14 +53,19 @@ class TestNotebookLMClient:
             )
             return client
 
-    def test_init_with_credentials(self, mock_credentials: service_account.Credentials) -> None:
+    def test_init_with_credentials(
+        self, mock_credentials: service_account.Credentials
+    ) -> None:
         """認証情報を指定して初期化できる。"""
-        with patch(
-            "notebooklm_enterprise_experiments_py.infrastructure.external.notebooklm_client.discoveryengine.NotebookServiceClient",
-            return_value=Mock(),
-        ), patch(
-            "notebooklm_enterprise_experiments_py.infrastructure.external.notebooklm_client.discoveryengine.ConversationalSearchServiceClient",
-            return_value=Mock(),
+        with (
+            patch(
+                "notebooklm_enterprise_experiments_py.infrastructure.external.notebooklm_client.discoveryengine.NotebookServiceClient",
+                return_value=Mock(),
+            ),
+            patch(
+                "notebooklm_enterprise_experiments_py.infrastructure.external.notebooklm_client.discoveryengine.ConversationalSearchServiceClient",
+                return_value=Mock(),
+            ),
         ):
             client = NotebookLMClient(
                 project_id="test-project",
@@ -77,18 +82,23 @@ class TestNotebookLMClient:
             "project_id": "test-project",
             "private_key_id": "test-key-id",
         }
-        with patch(
-            "notebooklm_enterprise_experiments_py.infrastructure.external.notebooklm_client.get_service_account_key_info",
-            return_value=key_info,
-        ), patch(
-            "notebooklm_enterprise_experiments_py.infrastructure.external.notebooklm_client.service_account.Credentials.from_service_account_info",
-            return_value=Mock(spec=service_account.Credentials),
-        ), patch(
-            "notebooklm_enterprise_experiments_py.infrastructure.external.notebooklm_client.discoveryengine.NotebookServiceClient",
-            return_value=Mock(),
-        ), patch(
-            "notebooklm_enterprise_experiments_py.infrastructure.external.notebooklm_client.discoveryengine.ConversationalSearchServiceClient",
-            return_value=Mock(),
+        with (
+            patch(
+                "notebooklm_enterprise_experiments_py.infrastructure.external.notebooklm_client.get_service_account_key_info",
+                return_value=key_info,
+            ),
+            patch(
+                "notebooklm_enterprise_experiments_py.infrastructure.external.notebooklm_client.service_account.Credentials.from_service_account_info",
+                return_value=Mock(spec=service_account.Credentials),
+            ),
+            patch(
+                "notebooklm_enterprise_experiments_py.infrastructure.external.notebooklm_client.discoveryengine.NotebookServiceClient",
+                return_value=Mock(),
+            ),
+            patch(
+                "notebooklm_enterprise_experiments_py.infrastructure.external.notebooklm_client.discoveryengine.ConversationalSearchServiceClient",
+                return_value=Mock(),
+            ),
         ):
             client = NotebookLMClient(
                 project_id="test-project",
@@ -102,21 +112,27 @@ class TestNotebookLMClient:
         key_file = tmp_path / "key.json"
         key_file.write_text('{"type": "service_account"}')
 
-        with patch(
-            "notebooklm_enterprise_experiments_py.infrastructure.external.notebooklm_client.get_service_account_key_info",
-            return_value=None,
-        ), patch(
-            "notebooklm_enterprise_experiments_py.infrastructure.external.notebooklm_client.get_service_account_key_path",
-            return_value=str(key_file),
-        ), patch(
-            "notebooklm_enterprise_experiments_py.infrastructure.external.notebooklm_client.service_account.Credentials.from_service_account_file",
-            return_value=Mock(spec=service_account.Credentials),
-        ), patch(
-            "notebooklm_enterprise_experiments_py.infrastructure.external.notebooklm_client.discoveryengine.NotebookServiceClient",
-            return_value=Mock(),
-        ), patch(
-            "notebooklm_enterprise_experiments_py.infrastructure.external.notebooklm_client.discoveryengine.ConversationalSearchServiceClient",
-            return_value=Mock(),
+        with (
+            patch(
+                "notebooklm_enterprise_experiments_py.infrastructure.external.notebooklm_client.get_service_account_key_info",
+                return_value=None,
+            ),
+            patch(
+                "notebooklm_enterprise_experiments_py.infrastructure.external.notebooklm_client.get_service_account_key_path",
+                return_value=str(key_file),
+            ),
+            patch(
+                "notebooklm_enterprise_experiments_py.infrastructure.external.notebooklm_client.service_account.Credentials.from_service_account_file",
+                return_value=Mock(spec=service_account.Credentials),
+            ),
+            patch(
+                "notebooklm_enterprise_experiments_py.infrastructure.external.notebooklm_client.discoveryengine.NotebookServiceClient",
+                return_value=Mock(),
+            ),
+            patch(
+                "notebooklm_enterprise_experiments_py.infrastructure.external.notebooklm_client.discoveryengine.ConversationalSearchServiceClient",
+                return_value=Mock(),
+            ),
         ):
             client = NotebookLMClient(
                 project_id="test-project",
@@ -127,12 +143,15 @@ class TestNotebookLMClient:
 
     def test_init_without_credentials_raises_error(self) -> None:
         """認証情報が設定されていない場合はエラーを発生させる。"""
-        with patch(
-            "notebooklm_enterprise_experiments_py.infrastructure.external.notebooklm_client.get_service_account_key_info",
-            return_value=None,
-        ), patch(
-            "notebooklm_enterprise_experiments_py.infrastructure.external.notebooklm_client.get_service_account_key_path",
-            return_value=None,
+        with (
+            patch(
+                "notebooklm_enterprise_experiments_py.infrastructure.external.notebooklm_client.get_service_account_key_info",
+                return_value=None,
+            ),
+            patch(
+                "notebooklm_enterprise_experiments_py.infrastructure.external.notebooklm_client.get_service_account_key_path",
+                return_value=None,
+            ),
         ):
             with pytest.raises(
                 ValueError,
@@ -143,20 +162,23 @@ class TestNotebookLMClient:
                     location="global",
                 )
 
-    def test_create_notebook(self, mock_credentials: service_account.Credentials) -> None:
+    def test_create_notebook(
+        self, mock_credentials: service_account.Credentials
+    ) -> None:
         """ノートブックを作成できる。"""
         mock_notebook_client = Mock()
         mock_response = Mock()
-        mock_notebook_client.create_notebook = MagicMock(
-            return_value=mock_response
-        )
+        mock_notebook_client.create_notebook = MagicMock(return_value=mock_response)
 
-        with patch(
-            "notebooklm_enterprise_experiments_py.infrastructure.external.notebooklm_client.discoveryengine.NotebookServiceClient",
-            return_value=mock_notebook_client,
-        ), patch(
-            "notebooklm_enterprise_experiments_py.infrastructure.external.notebooklm_client.discoveryengine.ConversationalSearchServiceClient",
-            return_value=Mock(),
+        with (
+            patch(
+                "notebooklm_enterprise_experiments_py.infrastructure.external.notebooklm_client.discoveryengine.NotebookServiceClient",
+                return_value=mock_notebook_client,
+            ),
+            patch(
+                "notebooklm_enterprise_experiments_py.infrastructure.external.notebooklm_client.discoveryengine.ConversationalSearchServiceClient",
+                return_value=Mock(),
+            ),
         ):
             client = NotebookLMClient(
                 project_id="test-project",
@@ -184,12 +206,15 @@ class TestNotebookLMClient:
             return_value=mock_operation
         )
 
-        with patch(
-            "notebooklm_enterprise_experiments_py.infrastructure.external.notebooklm_client.discoveryengine.NotebookServiceClient",
-            return_value=mock_notebook_client,
-        ), patch(
-            "notebooklm_enterprise_experiments_py.infrastructure.external.notebooklm_client.discoveryengine.ConversationalSearchServiceClient",
-            return_value=Mock(),
+        with (
+            patch(
+                "notebooklm_enterprise_experiments_py.infrastructure.external.notebooklm_client.discoveryengine.NotebookServiceClient",
+                return_value=mock_notebook_client,
+            ),
+            patch(
+                "notebooklm_enterprise_experiments_py.infrastructure.external.notebooklm_client.discoveryengine.ConversationalSearchServiceClient",
+                return_value=Mock(),
+            ),
         ):
             client = NotebookLMClient(
                 project_id="test-project",
@@ -216,16 +241,17 @@ class TestNotebookLMClient:
         mock_answer.citations = []
         mock_response = Mock()
         mock_response.answer = mock_answer
-        mock_conversational_client.answer = MagicMock(
-            return_value=mock_response
-        )
+        mock_conversational_client.answer = MagicMock(return_value=mock_response)
 
-        with patch(
-            "notebooklm_enterprise_experiments_py.infrastructure.external.notebooklm_client.discoveryengine.NotebookServiceClient",
-            return_value=Mock(),
-        ), patch(
-            "notebooklm_enterprise_experiments_py.infrastructure.external.notebooklm_client.discoveryengine.ConversationalSearchServiceClient",
-            return_value=mock_conversational_client,
+        with (
+            patch(
+                "notebooklm_enterprise_experiments_py.infrastructure.external.notebooklm_client.discoveryengine.NotebookServiceClient",
+                return_value=Mock(),
+            ),
+            patch(
+                "notebooklm_enterprise_experiments_py.infrastructure.external.notebooklm_client.discoveryengine.ConversationalSearchServiceClient",
+                return_value=mock_conversational_client,
+            ),
         ):
             client = NotebookLMClient(
                 project_id="test-project",

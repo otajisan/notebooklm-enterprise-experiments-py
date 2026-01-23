@@ -1,8 +1,7 @@
 """NotebookLMクライアント（Google Cloud Discovery Engine）。"""
 
-from typing import Any
-
 from pathlib import Path
+from typing import Any
 
 from google.cloud import discoveryengine_v1alpha as discoveryengine
 from google.oauth2 import service_account
@@ -112,7 +111,8 @@ class NotebookLMClient:
             source_uris: 追加するソースURIのリスト（GCS URI）
         """
         name = (
-            f"projects/{self.project_id}/locations/{self.location}/notebooks/{notebook_id}"
+            f"projects/{self.project_id}/locations/{self.location}/"
+            f"notebooks/{notebook_id}"
         )
 
         request = discoveryengine.ImportNotebookSourcesRequest(

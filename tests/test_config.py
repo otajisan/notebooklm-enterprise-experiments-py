@@ -2,7 +2,6 @@
 
 import json
 import os
-from pathlib import Path
 from unittest.mock import patch
 
 import pytest
@@ -43,10 +42,10 @@ class TestServiceAccountKey:
 
     def test_get_service_account_key_info_with_invalid_json(self) -> None:
         """無効なJSON文字列はエラーを発生させる。"""
-        with patch.dict(
-            os.environ, {"GCP_SERVICE_ACCOUNT_KEY_JSON": "invalid json"}
-        ):
-            with pytest.raises(ValueError, match="GCP_SERVICE_ACCOUNT_KEY_JSONの形式が不正です"):
+        with patch.dict(os.environ, {"GCP_SERVICE_ACCOUNT_KEY_JSON": "invalid json"}):
+            with pytest.raises(
+                ValueError, match="GCP_SERVICE_ACCOUNT_KEY_JSONの形式が不正です"
+            ):
                 env_config.get_service_account_key_info()
 
     def test_get_service_account_key_info_without_env(self) -> None:

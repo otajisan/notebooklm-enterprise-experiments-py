@@ -1,7 +1,7 @@
 """NotebookRepositoryの実装。"""
 
 from notebooklm_enterprise_experiments_py.domain.entities.notebook import Notebook
-from notebooklm_enterprise_experiments_py.domain.repositories.notebook_repository import (
+from notebooklm_enterprise_experiments_py.domain.repositories import (
     NotebookRepository,
 )
 from notebooklm_enterprise_experiments_py.domain.value_objects.answer import (
@@ -12,7 +12,7 @@ from notebooklm_enterprise_experiments_py.domain.value_objects.notebook_id impor
     NotebookId,
 )
 from notebooklm_enterprise_experiments_py.domain.value_objects.query import Query
-from notebooklm_enterprise_experiments_py.infrastructure.external.notebooklm_client import (
+from notebooklm_enterprise_experiments_py.infrastructure.external.notebooklm_client import (  # noqa: E501
     NotebookLMClient,
 )
 
@@ -45,7 +45,7 @@ class NotebookRepositoryImpl(NotebookRepository):
         Returns:
             作成されたノートブック
         """
-        response = self.client.create_notebook(
+        self.client.create_notebook(
             notebook_id=str(notebook_id),
             display_name=display_name,
         )

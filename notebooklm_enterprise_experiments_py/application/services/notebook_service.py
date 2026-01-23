@@ -8,7 +8,7 @@ from notebooklm_enterprise_experiments_py.application.dto.notebook_dto import (
     CreateNotebookRequest,
     CreateNotebookResponse,
 )
-from notebooklm_enterprise_experiments_py.domain.repositories.notebook_repository import (
+from notebooklm_enterprise_experiments_py.domain.repositories import (
     NotebookRepository,
 )
 from notebooklm_enterprise_experiments_py.domain.value_objects.notebook_id import (

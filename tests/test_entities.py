@@ -46,7 +46,9 @@ class TestNotebook:
     def test_non_string_display_name_raises_error(self) -> None:
         """文字列以外のdisplay_nameはエラーを発生させる。"""
         notebook_id = NotebookId("test-notebook-123")
-        with pytest.raises(ValueError, match="display_nameは文字列である必要があります"):
+        with pytest.raises(
+            ValueError, match="display_nameは文字列である必要があります"
+        ):
             Notebook(
                 notebook_id=notebook_id,
                 display_name=123,  # type: ignore[arg-type]
@@ -65,7 +67,9 @@ class TestNotebook:
     def test_non_string_source_uri_raises_error(self) -> None:
         """文字列以外のソースURIはエラーを発生させる。"""
         notebook_id = NotebookId("test-notebook-123")
-        with pytest.raises(ValueError, match="sourcesの要素は文字列である必要があります"):
+        with pytest.raises(
+            ValueError, match="sourcesの要素は文字列である必要があります"
+        ):
             Notebook(
                 notebook_id=notebook_id,
                 display_name="テストノートブック",
