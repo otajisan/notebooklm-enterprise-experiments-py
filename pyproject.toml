@@ -1,0 +1,14 @@
+[project]
+name = "notebooklm-enterprise-experiments-py"
+version = "0.1.0"
+description = ""
+readme = "README.md"
+requires-python = ">=3.13"
+dependencies = [
+    "google-cloud-discoveryengine",
+]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
