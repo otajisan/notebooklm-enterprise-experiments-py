@@ -5,6 +5,8 @@ from notebooklm_enterprise_experiments_py.infrastructure.config.env_config impor
     get_gcp_location,
     get_gcp_project_id,
     get_gcp_region,
+    get_service_account_key_info,
+    get_service_account_key_path,
 )
 
 __all__ = [
@@ -12,4 +14,6 @@ __all__ = [
     "get_gcp_project_id",
     "get_gcp_region",
     "get_gcp_location",
+    "get_service_account_key_path",
+    "get_service_account_key_info",
 ]
