@@ -1,5 +1,6 @@
 """環境変数の設定と読み込みを行うモジュール。"""
 
+import json
 import os
 from pathlib import Path
 
@@ -72,3 +73,34 @@ def get_gcp_location(default: str = "global") -> str:
     """
     result = get_env("GCP_LOCATION", default)
     return result if result is not None else default
+
+
+def get_service_account_key_path() -> str | None:
+    """
+    サービスアカウントキーのファイルパスを取得する。
+
+    Returns:
+        サービスアカウントキーのファイルパス、またはNone
+    """
+    return get_env("GCP_SERVICE_ACCOUNT_KEY_PATH")
+
+
+def get_service_account_key_info() -> dict | None:
+    """
+    サービスアカウントキーの情報を辞書として取得する。
+
+    環境変数GCP_SERVICE_ACCOUNT_KEY_JSONにJSON文字列が設定されている場合、
+    それをパースして返す。
+
+    Returns:
+        サービスアカウントキーの情報を表す辞書、またはNone
+    """
+    key_json = get_env("GCP_SERVICE_ACCOUNT_KEY_JSON")
+    if key_json:
+        try:
+            return json.loads(key_json)
+        except json.JSONDecodeError as e:
+            raise ValueError(
+                f"GCP_SERVICE_ACCOUNT_KEY_JSONの形式が不正です: {e}"
+            ) from e
+    return None
