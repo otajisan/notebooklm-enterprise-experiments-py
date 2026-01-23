@@ -13,7 +13,7 @@ from notebooklm_enterprise_experiments_py.application.services.notebook_service 
     NotebookService,
 )
 from notebooklm_enterprise_experiments_py.domain.entities.notebook import Notebook
-from notebooklm_enterprise_experiments_py.domain.repositories.notebook_repository import (
+from notebooklm_enterprise_experiments_py.domain.repositories import (
     NotebookRepository,
 )
 from notebooklm_enterprise_experiments_py.domain.value_objects.answer import (
@@ -63,9 +63,7 @@ class TestNotebookService:
         assert call_args[1]["notebook_id"] == notebook_id
         assert call_args[1]["display_name"] == "テストノートブック"
 
-    def test_add_sources(
-        self, service: NotebookService, mock_repository: Mock
-    ) -> None:
+    def test_add_sources(self, service: NotebookService, mock_repository: Mock) -> None:
         """ソースを追加できる。"""
         mock_repository.add_sources = Mock()
 

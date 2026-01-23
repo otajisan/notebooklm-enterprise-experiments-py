@@ -5,21 +5,20 @@ from unittest.mock import MagicMock, Mock
 import pytest
 
 from notebooklm_enterprise_experiments_py.domain.entities.notebook import Notebook
-from notebooklm_enterprise_experiments_py.domain.repositories.notebook_repository import (
+from notebooklm_enterprise_experiments_py.domain.repositories import (
     NotebookRepository,
 )
 from notebooklm_enterprise_experiments_py.domain.value_objects.answer import (
     Answer,
-    Citation,
 )
 from notebooklm_enterprise_experiments_py.domain.value_objects.notebook_id import (
     NotebookId,
 )
 from notebooklm_enterprise_experiments_py.domain.value_objects.query import Query
-from notebooklm_enterprise_experiments_py.infrastructure.external.notebooklm_client import (
+from notebooklm_enterprise_experiments_py.infrastructure.external.notebooklm_client import (  # noqa: E501
     NotebookLMClient,
 )
-from notebooklm_enterprise_experiments_py.infrastructure.repositories.notebook_repository_impl import (
+from notebooklm_enterprise_experiments_py.infrastructure.repositories import (  # noqa: E501
     NotebookRepositoryImpl,
 )
 
@@ -77,9 +76,7 @@ class TestNotebookRepositoryImpl:
             source_uris=["gs://bucket/doc1.pdf"],
         )
 
-    def test_ask(
-        self, repository: NotebookRepositoryImpl, mock_client: Mock
-    ) -> None:
+    def test_ask(self, repository: NotebookRepositoryImpl, mock_client: Mock) -> None:
         """質問できる。"""
         mock_citation = Mock()
         mock_citation.source_title = "ドキュメント1"
