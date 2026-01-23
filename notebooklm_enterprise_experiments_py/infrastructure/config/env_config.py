@@ -2,18 +2,18 @@
 
 import os
 from pathlib import Path
-from typing import Optional
 
 from dotenv import load_dotenv
 
-# プロジェクトルートディレクトリを取得（infrastructure/config/から3階層上がプロジェクトルート）
+# プロジェクトルートディレクトリを取得
+# (infrastructure/config/から3階層上がプロジェクトルート)
 PROJECT_ROOT = Path(__file__).parent.parent.parent.parent
 
 # .envファイルを読み込む
 load_dotenv(PROJECT_ROOT / ".env")
 
 
-def get_env(key: str, default: Optional[str] = None) -> Optional[str]:
+def get_env(key: str, default: str | None = None) -> str | None:
     """
     環境変数を取得する。
 
@@ -56,7 +56,8 @@ def get_gcp_region(default: str = "us-central1") -> str:
     Returns:
         GCPリージョン
     """
-    return get_env("GCP_REGION", default)
+    result = get_env("GCP_REGION", default)
+    return result if result is not None else default
 
 
 def get_gcp_location(default: str = "global") -> str:
@@ -69,4 +70,5 @@ def get_gcp_location(default: str = "global") -> str:
     Returns:
         GCPロケーション
     """
-    return get_env("GCP_LOCATION", default)
+    result = get_env("GCP_LOCATION", default)
+    return result if result is not None else default
