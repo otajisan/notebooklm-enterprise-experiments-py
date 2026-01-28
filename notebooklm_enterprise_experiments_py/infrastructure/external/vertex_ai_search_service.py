@@ -3,7 +3,7 @@
 from pathlib import Path
 from typing import Any
 
-from google.cloud import discoveryengine_v1 as discoveryengine
+from google.cloud import discoveryengine_v1alpha as discoveryengine
 from google.oauth2 import service_account
 
 from notebooklm_enterprise_experiments_py.infrastructure.config.env_config import (
@@ -20,7 +20,7 @@ from notebooklm_enterprise_experiments_py.interfaces.search_interface import (
 class VertexAISearchService(ISearchService):
     """Vertex AI Search (Discovery Engine) を使用した検索サービス。
 
-    SearchServiceClientを使用してWebサイトデータに対する検索と
+    ConversationalSearchServiceClientを使用してWebサイトデータに対する
     AIによる回答生成を行う。
     """
 
@@ -46,9 +46,9 @@ class VertexAISearchService(ISearchService):
         if credentials is None:
             credentials = self._load_credentials()
 
-        # SearchServiceClientの初期化
-        self.search_client = discoveryengine.SearchServiceClient(
-            credentials=credentials
+        # ConversationalSearchServiceClientの初期化（AI回答生成用）
+        self.conversational_client = (
+            discoveryengine.ConversationalSearchServiceClient(credentials=credentials)
         )
 
     def _load_credentials(self) -> service_account.Credentials:
@@ -105,64 +105,72 @@ class VertexAISearchService(ISearchService):
         """
         serving_config = self._build_serving_config_path()
 
-        # ContentSearchSpecの設定（要約を有効化）
-        content_search_spec = discoveryengine.SearchRequest.ContentSearchSpec(
-            summary_spec=discoveryengine.SearchRequest.ContentSearchSpec.SummarySpec(
-                summary_result_count=5,
-                include_citations=True,
-                language_code="ja",
-            ),
-            extractive_content_spec=discoveryengine.SearchRequest.ContentSearchSpec.ExtractiveContentSpec(
-                max_extractive_answer_count=3,
-            ),
-        )
-
-        # SearchRequestの作成
-        request = discoveryengine.SearchRequest(
+        # AnswerQueryRequestの作成（AI回答生成用）
+        request = discoveryengine.AnswerQueryRequest(
             serving_config=serving_config,
-            query=query,
-            page_size=10,
-            content_search_spec=content_search_spec,
+            query=discoveryengine.Query(text=query),
+            answer_generation_spec=discoveryengine.AnswerQueryRequest.AnswerGenerationSpec(
+                include_citations=True,
+                # 各種フィルタを無効化して回答生成を試みる
+                ignore_adversarial_query=True,
+                ignore_non_answer_seeking_query=True,
+                ignore_low_relevant_content=True,
+            ),
         )
 
-        # 検索を実行
-        response = self.search_client.search(request=request)
+        # 回答を取得
+        response = self.conversational_client.answer_query(request=request)
+
+        # デバッグ出力
+        print(f"[DEBUG] Response type: {type(response)}")
+        if response.answer:
+            print(f"[DEBUG] Answer text: '{response.answer.answer_text[:200]}...'")
+            print(f"[DEBUG] Answer state: {response.answer.state}")
+            skipped = response.answer.answer_skipped_reasons
+            print(f"[DEBUG] Answer skipped reasons: {skipped}")
+            print(f"[DEBUG] References count: {len(response.answer.references)}")
+            print(f"[DEBUG] Citations count: {len(response.answer.citations)}")
+            # 参照情報を出力
+            for i, ref in enumerate(response.answer.references[:3]):
+                print(f"[DEBUG] Reference {i}: {ref}")
+        else:
+            print("[DEBUG] Answer: None")
 
         # レスポンスから結果をパース
         return self._parse_response(response)
 
-    def _parse_response(
-        self, response: Any
-    ) -> SearchResult:
-        """SearchResponseをパースしてSearchResultを返す。
+    def _parse_response(self, response: Any) -> SearchResult:
+        """AnswerResponseをパースしてSearchResultを返す。
 
         Args:
-            response: Discovery Engineからの検索レスポンス（SearchPager）
+            response: Discovery EngineからのAnswerレスポンス
 
         Returns:
             SearchResult: パースされた検索結果
         """
-        # サマリーの取得
+        # 回答テキストの取得
         summary_text = ""
-        if response.summary and response.summary.summary_text:
-            summary_text = response.summary.summary_text
+        if response.answer and response.answer.answer_text:
+            summary_text = response.answer.answer_text
 
         # 引用情報の取得
         citations: list[SearchCitation] = []
-        for result in response.results:
-            document = result.document
-            if document and document.derived_struct_data:
-                # derived_struct_dataからタイトルとURLを取得
-                struct_data = dict(document.derived_struct_data)
-                title = struct_data.get("title", "")
-                url = struct_data.get("link", "")
-
-                if title or url:
-                    citations.append(
-                        SearchCitation(
-                            title=str(title) if title else "無題",
-                            url=str(url) if url else "",
-                        )
-                    )
+        if response.answer and response.answer.citations:
+            for citation in response.answer.citations:
+                for source in citation.sources:
+                    # reference_indexから対応するreferenceを取得
+                    ref_index = source.reference_index
+                    if ref_index < len(response.answer.references):
+                        ref = response.answer.references[ref_index]
+                        # unstructured_document_infoからURLとタイトルを取得
+                        if ref.unstructured_document_info:
+                            doc_info = ref.unstructured_document_info
+                            uri = doc_info.uri if doc_info.uri else ""
+                            title = doc_info.title if doc_info.title else "無題"
+                            # 重複チェック
+                            if not any(c.url == uri for c in citations):
+                                citations.append(
+                                    SearchCitation(title=str(title), url=str(uri))
+                                )
 
         return SearchResult(summary=summary_text, citations=citations)

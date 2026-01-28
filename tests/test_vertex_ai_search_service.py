@@ -27,7 +27,7 @@ class TestVertexAISearchService:
         """テスト用のサービスインスタンスを作成する。"""
         with patch(
             "notebooklm_enterprise_experiments_py.infrastructure.external."
-            "vertex_ai_search_service.discoveryengine.SearchServiceClient"
+            "vertex_ai_search_service.discoveryengine.ConversationalSearchServiceClient"
         ):
             return VertexAISearchService(
                 project_id="test-project",
@@ -40,7 +40,7 @@ class TestVertexAISearchService:
         """認証情報を指定して初期化できる。"""
         with patch(
             "notebooklm_enterprise_experiments_py.infrastructure.external."
-            "vertex_ai_search_service.discoveryengine.SearchServiceClient"
+            "vertex_ai_search_service.discoveryengine.ConversationalSearchServiceClient"
         ) as mock_client:
             service = VertexAISearchService(
                 project_id="test-project",
@@ -70,11 +70,14 @@ class TestVertexAISearchService:
         """search_and_answerがSearchResultを返す。"""
         # モックレスポンスの設定
         mock_response = MagicMock()
-        mock_response.summary = MagicMock()
-        mock_response.summary.summary_text = "テスト回答"
-        mock_response.results = []
+        mock_response.answer = MagicMock()
+        mock_response.answer.answer_text = "テスト回答"
+        mock_response.answer.state = 1
+        mock_response.answer.answer_skipped_reasons = []
+        mock_response.answer.references = []
+        mock_response.answer.citations = []
 
-        service.search_client.search.return_value = mock_response
+        service.conversational_client.answer_query.return_value = mock_response
 
         result = service.search_and_answer("テスト質問")
 
@@ -86,22 +89,31 @@ class TestVertexAISearchService:
         self, service: VertexAISearchService
     ) -> None:
         """引用付きの検索結果を正しくパースできる。"""
-        # モックドキュメントの設定
-        mock_doc = MagicMock()
-        mock_doc.derived_struct_data = {
-            "title": "テストページ",
-            "link": "https://example.com/test",
-        }
+        # モックリファレンスの設定
+        mock_doc_info = MagicMock()
+        mock_doc_info.uri = "https://example.com/test"
+        mock_doc_info.title = "テストページ"
 
-        mock_result = MagicMock()
-        mock_result.document = mock_doc
+        mock_reference = MagicMock()
+        mock_reference.unstructured_document_info = mock_doc_info
+
+        # モックソースの設定
+        mock_source = MagicMock()
+        mock_source.reference_index = 0
+
+        # モック引用の設定
+        mock_citation = MagicMock()
+        mock_citation.sources = [mock_source]
 
         mock_response = MagicMock()
-        mock_response.summary = MagicMock()
-        mock_response.summary.summary_text = "AIの回答です"
-        mock_response.results = [mock_result]
+        mock_response.answer = MagicMock()
+        mock_response.answer.answer_text = "AIの回答です"
+        mock_response.answer.state = 1
+        mock_response.answer.answer_skipped_reasons = []
+        mock_response.answer.references = [mock_reference]
+        mock_response.answer.citations = [mock_citation]
 
-        service.search_client.search.return_value = mock_response
+        service.conversational_client.answer_query.return_value = mock_response
 
         result = service.search_and_answer("質問")
 
@@ -110,15 +122,14 @@ class TestVertexAISearchService:
         assert result.citations[0].title == "テストページ"
         assert result.citations[0].url == "https://example.com/test"
 
-    def test_search_and_answer_without_summary(
+    def test_search_and_answer_without_answer(
         self, service: VertexAISearchService
     ) -> None:
-        """サマリーがない場合は空文字列を返す。"""
+        """回答がない場合は空文字列を返す。"""
         mock_response = MagicMock()
-        mock_response.summary = None
-        mock_response.results = []
+        mock_response.answer = None
 
-        service.search_client.search.return_value = mock_response
+        service.conversational_client.answer_query.return_value = mock_response
 
         result = service.search_and_answer("質問")
 
