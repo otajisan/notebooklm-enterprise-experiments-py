@@ -65,12 +65,19 @@ def get_gcp_location(default: str = "global") -> str:
     """
     GCPロケーションを取得する。
 
+    LOCATION環境変数を優先的に確認し、存在しない場合はGCP_LOCATIONを使用する。
+
     Args:
         default: デフォルトロケーション
 
     Returns:
         GCPロケーション
     """
+    # まずLOCATION環境変数を確認（Issue #9の仕様に合わせる）
+    result = get_env("LOCATION")
+    if result:
+        return result
+    # 次にGCP_LOCATION環境変数を確認
     result = get_env("GCP_LOCATION", default)
     return result if result is not None else default
 
@@ -83,6 +90,25 @@ def get_service_account_key_path() -> str | None:
         サービスアカウントキーのファイルパス、またはNone
     """
     return get_env("GCP_SERVICE_ACCOUNT_KEY_PATH")
+
+
+def get_engine_id() -> str:
+    """
+    Engine ID（検索アプリID）を取得する。
+
+    Returns:
+        Engine ID
+
+    Raises:
+        ValueError: ENGINE_IDが設定されていない場合
+    """
+    engine_id = get_env("ENGINE_ID")
+    if not engine_id:
+        raise ValueError(
+            "ENGINE_ID環境変数が設定されていません。"
+            ".envファイルを作成してENGINE_IDを設定してください。"
+        )
+    return engine_id
 
 
 def get_service_account_key_info() -> dict | None:

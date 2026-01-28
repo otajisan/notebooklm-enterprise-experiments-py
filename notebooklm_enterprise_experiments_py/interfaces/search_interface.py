@@ -1,0 +1,45 @@
+"""検索サービスのインターフェース定義。"""
+
+from abc import ABC, abstractmethod
+from dataclasses import dataclass
+
+
+@dataclass(frozen=True)
+class SearchCitation:
+    """検索結果の引用情報を表すデータクラス。"""
+
+    title: str
+    url: str
+
+
+@dataclass(frozen=True)
+class SearchResult:
+    """検索結果を表すデータクラス。
+
+    Attributes:
+        summary: AIによって生成された回答テキスト
+        citations: 参照元のタイトルとURLのリスト
+    """
+
+    summary: str
+    citations: list[SearchCitation]
+
+
+class ISearchService(ABC):
+    """検索サービスのインターフェース。
+
+    Vertex AI Search (Discovery Engine) を使用した検索と回答生成を行う
+    サービスの抽象クラス。
+    """
+
+    @abstractmethod
+    def search_and_answer(self, query: str) -> SearchResult:
+        """検索と同時にAIによる要約（回答）を取得する。
+
+        Args:
+            query: 検索クエリ（質問テキスト）
+
+        Returns:
+            SearchResult: summary（回答テキスト）とcitations（引用元リスト）を含む結果
+        """
+        raise NotImplementedError
