@@ -3,6 +3,7 @@
 from pathlib import Path
 from typing import Any
 
+from google.api_core.client_options import ClientOptions
 from google.cloud import discoveryengine_v1alpha as discoveryengine
 from google.oauth2 import service_account
 
@@ -20,8 +21,8 @@ from notebooklm_enterprise_experiments_py.interfaces.search_interface import (
 class VertexAISearchService(ISearchService):
     """Vertex AI Search (Discovery Engine) を使用した検索サービス。
 
-    ConversationalSearchServiceClientを使用してWebサイトデータに対する
-    AIによる回答生成を行う。
+    SearchServiceClientを使用してWebサイトデータに対する検索と
+    AIによる回答要約生成を行う。
     """
 
     def __init__(
@@ -46,9 +47,25 @@ class VertexAISearchService(ISearchService):
         if credentials is None:
             credentials = self._load_credentials()
 
-        # ConversationalSearchServiceClientの初期化（AI回答生成用）
-        self.conversational_client = (
-            discoveryengine.ConversationalSearchServiceClient(credentials=credentials)
+        # SearchServiceClientの初期化
+        # locationに応じてエンドポイントを設定
+        client_options = None
+        if location != "global":
+            client_options = ClientOptions(
+                api_endpoint=f"{location}-discoveryengine.googleapis.com"
+            )
+
+        self.search_client = discoveryengine.SearchServiceClient(
+            credentials=credentials,
+            client_options=client_options,
+        )
+
+        # serving_configのパスを構築
+        self.serving_config = self.search_client.serving_config_path(
+            project=project_id,
+            location=location,
+            data_store=engine_id,
+            serving_config="default_serving_config",
         )
 
     def _load_credentials(self) -> service_account.Credentials:
@@ -82,18 +99,6 @@ class VertexAISearchService(ISearchService):
             "GCP_SERVICE_ACCOUNT_KEY_PATHまたはGCP_SERVICE_ACCOUNT_KEY_JSONを設定してください。"
         )
 
-    def _build_serving_config_path(self) -> str:
-        """serving_configのパスを構築する。
-
-        Returns:
-            serving_configのフルパス
-        """
-        return (
-            f"projects/{self.project_id}/locations/{self.location}/"
-            f"collections/default_collection/engines/{self.engine_id}/"
-            f"servingConfigs/default_serving_config"
-        )
-
     def search_and_answer(self, query: str) -> SearchResult:
         """検索と同時にAIによる要約（回答）を取得する。
 
@@ -103,74 +108,84 @@ class VertexAISearchService(ISearchService):
         Returns:
             SearchResult: summary（回答テキスト）とcitations（引用元リスト）を含む結果
         """
-        serving_config = self._build_serving_config_path()
-
-        # AnswerQueryRequestの作成（AI回答生成用）
-        request = discoveryengine.AnswerQueryRequest(
-            serving_config=serving_config,
-            query=discoveryengine.Query(text=query),
-            answer_generation_spec=discoveryengine.AnswerQueryRequest.AnswerGenerationSpec(
-                include_citations=True,
-                # 各種フィルタを無効化して回答生成を試みる
-                ignore_adversarial_query=True,
-                ignore_non_answer_seeking_query=True,
-                ignore_low_relevant_content=True,
+        # ContentSearchSpecの設定（要約を有効化）
+        content_search_spec = discoveryengine.SearchRequest.ContentSearchSpec(
+            summary_spec=discoveryengine.SearchRequest.ContentSearchSpec.SummarySpec(
+                summary_result_count=5,  # 上位5件を回答生成に使用
+                include_citations=True,  # 引用元を含める
+                ignore_non_summary_seeking_query=True,  # 質問形式でなくても回答を強制
+                ignore_adversarial_query=True,  # フィルタを緩和
+                language_code="ja",  # 日本語指定
+            ),
+            snippet_spec=discoveryengine.SearchRequest.ContentSearchSpec.SnippetSpec(
+                return_snippet=True,
             ),
         )
 
-        # 回答を取得
-        response = self.conversational_client.answer_query(request=request)
+        # SearchRequestの作成
+        request = discoveryengine.SearchRequest(
+            serving_config=self.serving_config,
+            query=query,
+            page_size=5,
+            content_search_spec=content_search_spec,
+            query_expansion_spec=discoveryengine.SearchRequest.QueryExpansionSpec(
+                condition=discoveryengine.SearchRequest.QueryExpansionSpec.Condition.AUTO,
+            ),
+            spell_correction_spec=discoveryengine.SearchRequest.SpellCorrectionSpec(
+                mode=discoveryengine.SearchRequest.SpellCorrectionSpec.Mode.AUTO,
+            ),
+        )
+
+        # 検索を実行
+        response = self.search_client.search(request=request)
 
         # デバッグ出力
         print(f"[DEBUG] Response type: {type(response)}")
-        if response.answer:
-            print(f"[DEBUG] Answer text: '{response.answer.answer_text[:200]}...'")
-            print(f"[DEBUG] Answer state: {response.answer.state}")
-            skipped = response.answer.answer_skipped_reasons
-            print(f"[DEBUG] Answer skipped reasons: {skipped}")
-            print(f"[DEBUG] References count: {len(response.answer.references)}")
-            print(f"[DEBUG] Citations count: {len(response.answer.citations)}")
-            # 参照情報を出力
-            for i, ref in enumerate(response.answer.references[:3]):
-                print(f"[DEBUG] Reference {i}: {ref}")
+        if response.summary:
+            summary_text = response.summary.summary_text
+            if summary_text:
+                print(f"[DEBUG] Summary: '{summary_text[:200]}...'")
+            else:
+                print("[DEBUG] Summary: (empty)")
+            if response.summary.summary_skipped_reasons:
+                reasons = response.summary.summary_skipped_reasons
+                print(f"[DEBUG] Skipped Reasons: {reasons}")
         else:
-            print("[DEBUG] Answer: None")
+            print("[DEBUG] Summary: None")
 
         # レスポンスから結果をパース
         return self._parse_response(response)
 
     def _parse_response(self, response: Any) -> SearchResult:
-        """AnswerResponseをパースしてSearchResultを返す。
+        """SearchResponseをパースしてSearchResultを返す。
 
         Args:
-            response: Discovery EngineからのAnswerレスポンス
+            response: Discovery Engineからの検索レスポンス
 
         Returns:
             SearchResult: パースされた検索結果
         """
-        # 回答テキストの取得
+        # サマリーの取得
         summary_text = ""
-        if response.answer and response.answer.answer_text:
-            summary_text = response.answer.answer_text
+        if response.summary and response.summary.summary_text:
+            summary_text = response.summary.summary_text
 
-        # 引用情報の取得
+        # 引用情報の取得（検索結果から）
         citations: list[SearchCitation] = []
-        if response.answer and response.answer.citations:
-            for citation in response.answer.citations:
-                for source in citation.sources:
-                    # reference_indexから対応するreferenceを取得
-                    ref_index = source.reference_index
-                    if ref_index < len(response.answer.references):
-                        ref = response.answer.references[ref_index]
-                        # unstructured_document_infoからURLとタイトルを取得
-                        if ref.unstructured_document_info:
-                            doc_info = ref.unstructured_document_info
-                            uri = doc_info.uri if doc_info.uri else ""
-                            title = doc_info.title if doc_info.title else "無題"
-                            # 重複チェック
-                            if not any(c.url == uri for c in citations):
-                                citations.append(
-                                    SearchCitation(title=str(title), url=str(uri))
-                                )
+        for result in response.results:
+            document = result.document
+            if document and document.derived_struct_data:
+                # derived_struct_dataからタイトルとURLを取得
+                struct_data = dict(document.derived_struct_data)
+                title = struct_data.get("title", "")
+                url = struct_data.get("link", "")
+
+                if title or url:
+                    citations.append(
+                        SearchCitation(
+                            title=str(title) if title else "無題",
+                            url=str(url) if url else "",
+                        )
+                    )
 
         return SearchResult(summary=summary_text, citations=citations)

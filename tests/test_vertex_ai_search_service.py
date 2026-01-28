@@ -27,8 +27,12 @@ class TestVertexAISearchService:
         """テスト用のサービスインスタンスを作成する。"""
         with patch(
             "notebooklm_enterprise_experiments_py.infrastructure.external."
-            "vertex_ai_search_service.discoveryengine.ConversationalSearchServiceClient"
-        ):
+            "vertex_ai_search_service.discoveryengine.SearchServiceClient"
+        ) as mock_client:
+            mock_client.return_value.serving_config_path.return_value = (
+                "projects/test-project/locations/global/dataStores/test-engine/"
+                "servingConfigs/default_serving_config"
+            )
             return VertexAISearchService(
                 project_id="test-project",
                 location="global",
@@ -40,8 +44,11 @@ class TestVertexAISearchService:
         """認証情報を指定して初期化できる。"""
         with patch(
             "notebooklm_enterprise_experiments_py.infrastructure.external."
-            "vertex_ai_search_service.discoveryengine.ConversationalSearchServiceClient"
+            "vertex_ai_search_service.discoveryengine.SearchServiceClient"
         ) as mock_client:
+            mock_client.return_value.serving_config_path.return_value = (
+                "mock/serving/config/path"
+            )
             service = VertexAISearchService(
                 project_id="test-project",
                 location="global",
@@ -51,18 +58,29 @@ class TestVertexAISearchService:
             assert service.project_id == "test-project"
             assert service.location == "global"
             assert service.engine_id == "test-engine"
-            mock_client.assert_called_once_with(credentials=mock_credentials)
+            mock_client.assert_called_once_with(
+                credentials=mock_credentials,
+                client_options=None,
+            )
 
-    def test_build_serving_config_path(
-        self, service: VertexAISearchService
-    ) -> None:
-        """serving_configパスを正しく構築できる。"""
-        expected = (
-            "projects/test-project/locations/global/"
-            "collections/default_collection/engines/test-engine/"
-            "servingConfigs/default_serving_config"
-        )
-        assert service._build_serving_config_path() == expected
+    def test_init_with_non_global_location(self, mock_credentials: MagicMock) -> None:
+        """global以外のlocationでは適切なエンドポイントが設定される。"""
+        with patch(
+            "notebooklm_enterprise_experiments_py.infrastructure.external."
+            "vertex_ai_search_service.discoveryengine.SearchServiceClient"
+        ) as mock_client:
+            mock_client.return_value.serving_config_path.return_value = (
+                "mock/serving/config/path"
+            )
+            VertexAISearchService(
+                project_id="test-project",
+                location="us-central1",
+                engine_id="test-engine",
+                credentials=mock_credentials,
+            )
+            # client_optionsが設定されていることを確認
+            call_kwargs = mock_client.call_args.kwargs
+            assert call_kwargs["client_options"] is not None
 
     def test_search_and_answer_returns_search_result(
         self, service: VertexAISearchService
@@ -70,14 +88,12 @@ class TestVertexAISearchService:
         """search_and_answerがSearchResultを返す。"""
         # モックレスポンスの設定
         mock_response = MagicMock()
-        mock_response.answer = MagicMock()
-        mock_response.answer.answer_text = "テスト回答"
-        mock_response.answer.state = 1
-        mock_response.answer.answer_skipped_reasons = []
-        mock_response.answer.references = []
-        mock_response.answer.citations = []
+        mock_response.summary = MagicMock()
+        mock_response.summary.summary_text = "テスト回答"
+        mock_response.summary.summary_skipped_reasons = []
+        mock_response.results = []
 
-        service.conversational_client.answer_query.return_value = mock_response
+        service.search_client.search.return_value = mock_response
 
         result = service.search_and_answer("テスト質問")
 
@@ -89,31 +105,23 @@ class TestVertexAISearchService:
         self, service: VertexAISearchService
     ) -> None:
         """引用付きの検索結果を正しくパースできる。"""
-        # モックリファレンスの設定
-        mock_doc_info = MagicMock()
-        mock_doc_info.uri = "https://example.com/test"
-        mock_doc_info.title = "テストページ"
+        # モックドキュメントの設定
+        mock_doc = MagicMock()
+        mock_doc.derived_struct_data = {
+            "title": "テストページ",
+            "link": "https://example.com/test",
+        }
 
-        mock_reference = MagicMock()
-        mock_reference.unstructured_document_info = mock_doc_info
-
-        # モックソースの設定
-        mock_source = MagicMock()
-        mock_source.reference_index = 0
-
-        # モック引用の設定
-        mock_citation = MagicMock()
-        mock_citation.sources = [mock_source]
+        mock_result = MagicMock()
+        mock_result.document = mock_doc
 
         mock_response = MagicMock()
-        mock_response.answer = MagicMock()
-        mock_response.answer.answer_text = "AIの回答です"
-        mock_response.answer.state = 1
-        mock_response.answer.answer_skipped_reasons = []
-        mock_response.answer.references = [mock_reference]
-        mock_response.answer.citations = [mock_citation]
+        mock_response.summary = MagicMock()
+        mock_response.summary.summary_text = "AIの回答です"
+        mock_response.summary.summary_skipped_reasons = []
+        mock_response.results = [mock_result]
 
-        service.conversational_client.answer_query.return_value = mock_response
+        service.search_client.search.return_value = mock_response
 
         result = service.search_and_answer("質問")
 
@@ -122,14 +130,15 @@ class TestVertexAISearchService:
         assert result.citations[0].title == "テストページ"
         assert result.citations[0].url == "https://example.com/test"
 
-    def test_search_and_answer_without_answer(
+    def test_search_and_answer_without_summary(
         self, service: VertexAISearchService
     ) -> None:
-        """回答がない場合は空文字列を返す。"""
+        """サマリーがない場合は空文字列を返す。"""
         mock_response = MagicMock()
-        mock_response.answer = None
+        mock_response.summary = None
+        mock_response.results = []
 
-        service.conversational_client.answer_query.return_value = mock_response
+        service.search_client.search.return_value = mock_response
 
         result = service.search_and_answer("質問")
 
