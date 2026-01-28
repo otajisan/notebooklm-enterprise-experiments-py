@@ -53,3 +53,51 @@ class TestServiceAccountKey:
         with patch.dict(os.environ, {}, clear=True):
             result = env_config.get_service_account_key_info()
             assert result is None
+
+
+class TestEngineId:
+    """ENGINE_ID関連のテスト。"""
+
+    def test_get_engine_id_with_env(self) -> None:
+        """環境変数からENGINE_IDを取得できる。"""
+        with patch.dict(os.environ, {"ENGINE_ID": "test-engine-123"}):
+            result = env_config.get_engine_id()
+            assert result == "test-engine-123"
+
+    def test_get_engine_id_without_env(self) -> None:
+        """環境変数が設定されていない場合はエラーを発生させる。"""
+        with patch.dict(os.environ, {}, clear=True):
+            with pytest.raises(
+                ValueError, match="ENGINE_ID環境変数が設定されていません"
+            ):
+                env_config.get_engine_id()
+
+
+class TestGcpLocation:
+    """GCPロケーション関連のテスト。"""
+
+    def test_get_gcp_location_with_location_env(self) -> None:
+        """LOCATION環境変数を優先的に使用する。"""
+        with patch.dict(
+            os.environ, {"LOCATION": "us-central1", "GCP_LOCATION": "global"}
+        ):
+            result = env_config.get_gcp_location()
+            assert result == "us-central1"
+
+    def test_get_gcp_location_with_gcp_location_env(self) -> None:
+        """LOCATIONがない場合はGCP_LOCATIONを使用する。"""
+        with patch.dict(os.environ, {"GCP_LOCATION": "asia-northeast1"}, clear=True):
+            result = env_config.get_gcp_location()
+            assert result == "asia-northeast1"
+
+    def test_get_gcp_location_with_default(self) -> None:
+        """環境変数が設定されていない場合はデフォルト値を返す。"""
+        with patch.dict(os.environ, {}, clear=True):
+            result = env_config.get_gcp_location()
+            assert result == "global"
+
+    def test_get_gcp_location_with_custom_default(self) -> None:
+        """カスタムデフォルト値を指定できる。"""
+        with patch.dict(os.environ, {}, clear=True):
+            result = env_config.get_gcp_location(default="europe-west1")
+            assert result == "europe-west1"
