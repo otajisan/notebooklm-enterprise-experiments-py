@@ -56,6 +56,6 @@ def test_get_gcp_location_with_default():
 
 def test_get_gcp_location_with_env():
     """GCPロケーションを取得するテスト（環境変数から取得）。"""
-    with patch.dict(os.environ, {"GCP_LOCATION": "us-central1"}):
+    with patch.dict(os.environ, {"GCP_LOCATION": "us-central1"}, clear=True):
         result = env_config.get_gcp_location()
         assert result == "us-central1"
