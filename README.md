@@ -7,7 +7,9 @@
 ```
 .
 ├── scripts/                 # 検証・ユーティリティスクリプト
-│   └── verify_qa.py         # Vertex AI Search 動作検証
+│   ├── verify_qa.py         # Vertex AI Search 動作検証
+│   ├── generate_slides.py   # スライド構成案（Marp Markdown）生成
+│   └── generate_infographic.py  # 図解（Mermaid.js）生成
 ├── tests/                   # テストコード
 └── notebooklm_enterprise_experiments_py/
     ├── domain/              # ドメインレイヤー
@@ -73,6 +75,7 @@ region = get_gcp_region()
 - `get_gcp_region(default="us-central1")`: GCPリージョンを取得
 - `get_gcp_location(default="global")`: GCPロケーションを取得
 - `get_engine_id()`: Vertex AI Search Engine IDを取得
+- `get_gemini_model(default="gemini-2.5-flash")`: Geminiモデル名を取得
 - `get_env(key, default=None)`: 任意の環境変数を取得
 
 ## スクリプトの実行
@@ -97,6 +100,9 @@ ENGINE_ID=your-engine-id
 
 # オプション（デフォルト: global）
 LOCATION=global
+
+# Geminiモデル（デフォルト: gemini-2.5-flash）
+GEMINI_MODEL=gemini-2.5-flash
 
 # 認証情報（いずれかを設定）
 GCP_SERVICE_ACCOUNT_KEY_PATH=credentials/service-account.json
@@ -158,6 +164,129 @@ VertexAISearchService を初期化中...
 検証完了
 ============================================================
 ```
+
+### スライド生成スクリプト
+
+`scripts/generate_slides.py` は、検索結果を元にプレゼンテーション用のスライド構成を生成するスクリプトです。
+
+#### 機能
+
+- Vertex AI Searchで関連ドキュメントを検索
+- Gemini Proを使用してMarp互換のMarkdown形式でスライド構成を生成
+- 5〜8枚程度のスライドに自動でまとめる
+
+#### 実行方法
+
+```bash
+# 基本的な使い方
+uv run python scripts/generate_slides.py "新入社員向けのセキュリティ研修資料を作って"
+
+# 出力ファイル名を指定
+uv run python scripts/generate_slides.py "検索クエリ" --output my_slides.md
+
+# 使用するGeminiモデルを指定
+uv run python scripts/generate_slides.py "検索クエリ" --model gemini-2.5-pro
+```
+
+#### コマンドラインオプション
+
+| オプション | 説明 | デフォルト |
+|-----------|------|-----------|
+| `query` | 検索クエリ（必須） | - |
+| `--output`, `-o` | 出力ファイル名 | `output_slides.md` |
+| `--model`, `-m` | 使用するGeminiモデル | 環境変数または `gemini-2.5-flash` |
+
+#### 出力例
+
+```markdown
+---
+marp: true
+theme: default
+paginate: true
+---
+
+# セキュリティ研修資料
+
+概要テキスト
+
+---
+
+## セクション1
+
+- ポイント1
+- ポイント2
+
+---
+```
+
+生成されたMarkdownファイルは、VS Code + Marp拡張機能でプレビュー・PDF出力できます。
+
+### 図解生成スクリプト
+
+`scripts/generate_infographic.py` は、検索結果を元にMermaid.js形式の図解を生成するスクリプトです。
+
+#### 機能
+
+- Vertex AI Searchで関連ドキュメントを検索
+- Gemini Proを使用してMermaid.js形式の図解コードを生成
+- フローチャート、シーケンス図、マインドマップなど複数の図形式をサポート
+
+#### 実行方法
+
+```bash
+# フローチャートを生成（デフォルト）
+uv run python scripts/generate_infographic.py "稟議申請のフローチャートを作って"
+
+# シーケンス図を生成
+uv run python scripts/generate_infographic.py "APIの呼び出し順序を図解して" --type sequence
+
+# マインドマップを生成
+uv run python scripts/generate_infographic.py "プロジェクトの構成を図解して" --type mindmap
+
+# 出力ファイル名を指定
+uv run python scripts/generate_infographic.py "検索クエリ" --output my_diagram.md
+```
+
+#### コマンドラインオプション
+
+| オプション | 説明 | デフォルト |
+|-----------|------|-----------|
+| `query` | 検索クエリ（必須） | - |
+| `--type`, `-t` | 図の種類 | `flowchart` |
+| `--output`, `-o` | 出力ファイル名 | `output_diagram.md` |
+| `--model`, `-m` | 使用するGeminiモデル | 環境変数または `gemini-2.5-flash` |
+
+#### サポートする図の種類
+
+| タイプ | 説明 |
+|--------|------|
+| `flowchart` | フローチャート |
+| `sequence` | シーケンス図 |
+| `mindmap` | マインドマップ |
+| `classDiagram` | クラス図 |
+| `stateDiagram` | 状態遷移図 |
+| `erDiagram` | ER図 |
+| `gantt` | ガントチャート |
+
+#### 出力例
+
+```markdown
+```mermaid
+flowchart TD
+    A[申請開始] --> B[申請書作成]
+    B --> C{金額確認}
+    C -->|10万円未満| D[課長承認]
+    C -->|10万円以上| E[部長承認]
+    D --> F[経理確認]
+    E --> F
+    F --> G[完了]
+```
+```
+
+生成されたMermaidコードは以下の方法でプレビューできます：
+- VS Code + Mermaid拡張機能
+- GitHub/GitLabのMarkdownプレビュー
+- [Mermaid Live Editor](https://mermaid.live/)
 
 ## 開発ガイドライン
 
