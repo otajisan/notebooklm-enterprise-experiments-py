@@ -150,3 +150,75 @@ class ContentGenerator:
             ]
         )
         return instructions + "\n" + source_text + output_format
+
+    def generate_infographic_code(
+        self, source_text: str, chart_type: str = "flowchart"
+    ) -> str:
+        """検索結果からMermaid.js図解コードを生成する。
+
+        Args:
+            source_text: RAGで取得した要約テキストや検索結果
+            chart_type: 図の種類（flowchart, sequence, mindmap など）
+
+        Returns:
+            Mermaid.js記法のコード（Markdownコードブロック形式）
+        """
+        prompt = self._build_infographic_prompt(source_text, chart_type)
+        response = self.model.generate_content(prompt)
+        return response.text
+
+    def _build_infographic_prompt(self, source_text: str, chart_type: str) -> str:
+        """図解生成用のプロンプトを構築する。
+
+        Args:
+            source_text: RAGで取得した要約テキストや検索結果
+            chart_type: 図の種類
+
+        Returns:
+            プロンプト文字列
+        """
+        chart_type_instructions = {
+            "flowchart": "フローチャート（flowchart TD または flowchart LR）",
+            "sequence": "シーケンス図（sequenceDiagram）",
+            "mindmap": "マインドマップ（mindmap）",
+            "classDiagram": "クラス図（classDiagram）",
+            "stateDiagram": "状態遷移図（stateDiagram-v2）",
+            "erDiagram": "ER図（erDiagram）",
+            "gantt": "ガントチャート（gantt）",
+        }
+        chart_description = chart_type_instructions.get(chart_type, f"{chart_type}図")
+
+        instructions = "\n".join(
+            [
+                f"以下のテキストの内容を説明する{chart_description}を作成してください。",
+                "",
+                "【出力要件】",
+                "- 出力はMermaid.jsの構文のみにしてください",
+                "- Markdownのコードブロック ```mermaid で囲んでください",
+                "- ノードのラベルには日本語を使用してください",
+                "- 図は見やすく構造化してください",
+                "- 重要なポイントや関係性を明確に表現してください",
+                "",
+                "【入力情報】",
+            ]
+        )
+        output_format = "\n".join(
+            [
+                "",
+                "",
+                "【出力形式】",
+                "Mermaid.jsのコードブロックのみを出力してください。説明や補足は不要です。",
+                "",
+                "例:",
+                "```mermaid",
+                "flowchart TD",
+                "    A[開始] --> B[処理1]",
+                "    B --> C{条件分岐}",
+                "    C -->|Yes| D[処理2]",
+                "    C -->|No| E[処理3]",
+                "    D --> F[終了]",
+                "    E --> F",
+                "```",
+            ]
+        )
+        return instructions + "\n" + source_text + output_format
