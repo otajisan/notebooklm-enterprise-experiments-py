@@ -7,6 +7,7 @@ requires-python = ">=3.13"
 dependencies = [
     "google-cloud-aiplatform",
     "google-cloud-discoveryengine",
+    "mcp",
     "python-dotenv",
 ]
 
@@ -18,6 +19,7 @@ build-backend = "hatchling.build"
 dev = [
     "ruff",
     "pytest",
+    "pytest-asyncio",
     "pytest-cov",
     "pyright",
 ]
@@ -33,6 +35,7 @@ select = ["E", "F", "I", "UP", "N"]
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 addopts = "-v --cov=notebooklm_enterprise_experiments_py --cov-report=term-missing"
+asyncio_mode = "auto"
 
 [tool.pyright]
 include = ["notebooklm_enterprise_experiments_py"]
