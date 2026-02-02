@@ -2,10 +2,14 @@
 """Vertex AI Search (Discovery Engine) の動作検証スクリプト。
 
 このスクリプトは、Vertex AI Searchを使用して
-Webサイトデータに対する検索と回答生成が正しく動作することを確認する。
+データストアに対する検索と回答生成が正しく動作することを確認する。
 
 実行方法:
+    # デフォルトの質問で実行
     python scripts/verify_qa.py
+
+    # カスタムの質問で実行
+    python scripts/verify_qa.py "質問内容をここに記述"
 
 必要な環境変数:
     - GCP_PROJECT_ID: GCPプロジェクトID
@@ -69,8 +73,10 @@ def main() -> None:
         print(f"初期化エラー: {e}")
         sys.exit(1)
 
-    # 質問の実行
-    query = "スパイスを使った初心者向けのカレーレシピを提案してください"
+    # コマンドライン引数から質問を取得（なければデフォルト）
+    default_query = "このデータストアにあるドキュメントの概要を教えてください"
+    query = sys.argv[1] if len(sys.argv) > 1 else default_query
+
     print(f"質問: {query}")
     print("-" * 60)
     print()
@@ -84,14 +90,14 @@ def main() -> None:
         print()
 
         # 引用元を表示
-        print("【根拠となったWebページ】")
+        print("【参照ドキュメント】")
         if result.citations:
             for i, citation in enumerate(result.citations, 1):
                 print(f"  {i}. {citation.title}")
                 print(f"     URL: {citation.url}")
                 print()
         else:
-            print("  (引用元なし)")
+            print("  (参照ドキュメントなし)")
         print()
 
         print("=" * 60)
