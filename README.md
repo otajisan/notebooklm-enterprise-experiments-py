@@ -113,14 +113,21 @@ uv sync
 # 2. 仮想環境を有効化
 source .venv/bin/activate
 
-# 3. スクリプトを実行
+# 3. スクリプトを実行（デフォルトの質問）
 python scripts/verify_qa.py
+
+# 4. カスタムの質問で実行
+python scripts/verify_qa.py "質問内容をここに記述"
 ```
 
 または、`uv run` を使用して直接実行することもできます：
 
 ```bash
+# デフォルトの質問で実行
 uv run python scripts/verify_qa.py
+
+# カスタムの質問で実行
+uv run python scripts/verify_qa.py "ドキュメントに関する具体的な質問"
 ```
 
 #### 出力例
@@ -137,15 +144,15 @@ Engine ID: your-engine-id
 VertexAISearchService を初期化中...
 初期化完了
 
-質問: スパイスを使った初心者向けのカレーレシピを提案してください
+質問: このデータストアにあるドキュメントの概要を教えてください
 ------------------------------------------------------------
 
 【AIの回答】
 （AIによって生成された回答が表示されます）
 
-【根拠となったWebページ】
-  1. ページタイトル
-     URL: https://example.com/page
+【参照ドキュメント】
+  1. ドキュメントタイトル
+     URL: https://drive.google.com/...
 
 ============================================================
 検証完了
