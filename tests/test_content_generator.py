@@ -123,3 +123,54 @@ theme: default
                     project_id="test-project",
                     location="us-central1",
                 )
+
+    def test_generate_infographic_code(self, generator: ContentGenerator) -> None:
+        """generate_infographic_codeがMermaidコードを返す。"""
+        mock_response = MagicMock()
+        mock_response.text = """```mermaid
+flowchart TD
+    A[開始] --> B[処理1]
+    B --> C{条件分岐}
+    C -->|Yes| D[処理2]
+    C -->|No| E[処理3]
+    D --> F[終了]
+    E --> F
+```"""
+        generator.model.generate_content.return_value = mock_response
+
+        result = generator.generate_infographic_code("テスト入力テキスト")
+
+        assert "```mermaid" in result
+        assert "flowchart" in result
+        generator.model.generate_content.assert_called_once()
+
+    def test_generate_infographic_code_with_chart_type(
+        self, generator: ContentGenerator
+    ) -> None:
+        """chart_typeパラメータがプロンプトに含まれる。"""
+        mock_response = MagicMock()
+        mock_response.text = "```mermaid\nsequenceDiagram\n```"
+        generator.model.generate_content.return_value = mock_response
+
+        generator.generate_infographic_code("テスト入力", chart_type="sequence")
+
+        # プロンプトにシーケンス図の指示が含まれていることを確認
+        call_args = generator.model.generate_content.call_args
+        prompt = call_args[0][0]
+        assert "シーケンス図" in prompt
+
+    def test_generate_infographic_code_with_source_text(
+        self, generator: ContentGenerator
+    ) -> None:
+        """ソーステキストがプロンプトに含まれる。"""
+        mock_response = MagicMock()
+        mock_response.text = "```mermaid\nflowchart TD\n```"
+        generator.model.generate_content.return_value = mock_response
+
+        source_text = "稟議申請フローの説明テキスト"
+        generator.generate_infographic_code(source_text)
+
+        # プロンプトにソーステキストが含まれていることを確認
+        call_args = generator.model.generate_content.call_args
+        prompt = call_args[0][0]
+        assert source_text in prompt
