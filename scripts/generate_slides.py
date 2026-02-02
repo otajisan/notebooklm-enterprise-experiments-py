@@ -16,6 +16,7 @@ Gemini Proを使用してプレゼンテーション用のスライド構成を�
     - GCP_PROJECT_ID: GCPプロジェクトID
     - ENGINE_ID: 検索アプリ（Engine）のID
     - LOCATION: GCPロケーション（デフォルト: global）
+    - GEMINI_MODEL: 使用するGeminiモデル（デフォルト: gemini-1.5-pro）
     - GCP_SERVICE_ACCOUNT_KEY_PATH または GCP_SERVICE_ACCOUNT_KEY_JSON: 認証情報
 """
 
@@ -31,6 +32,7 @@ from notebooklm_enterprise_experiments_py.infrastructure.config.env_config impor
     get_engine_id,
     get_gcp_location,
     get_gcp_project_id,
+    get_gemini_model,
 )
 from notebooklm_enterprise_experiments_py.infrastructure.external.content_generator import (  # noqa: E402, E501
     ContentGenerator,
@@ -58,8 +60,8 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument(
         "--model",
         "-m",
-        default="gemini-1.5-pro",
-        help="使用するGeminiモデル（デフォルト: gemini-1.5-pro）",
+        default=None,
+        help="使用するGeminiモデル（環境変数GEMINI_MODELまたはgemini-1.5-pro）",
     )
     return parser.parse_args()
 
@@ -84,10 +86,13 @@ def main() -> None:
         print("必要な環境変数を.envファイルに設定してください。")
         sys.exit(1)
 
+    # モデル名の決定（コマンドライン引数 > 環境変数 > デフォルト）
+    model_name = args.model if args.model else get_gemini_model()
+
     print(f"プロジェクトID: {project_id}")
     print(f"Engine ID: {engine_id}")
     print(f"ロケーション: {location}")
-    print(f"使用モデル: {args.model}")
+    print(f"使用モデル: {model_name}")
     print()
 
     # Step 1: 検索サービスの初期化と検索実行
@@ -133,7 +138,7 @@ def main() -> None:
         generator = ContentGenerator(
             project_id=project_id,
             location="us-central1",
-            model_name=args.model,
+            model_name=model_name,
         )
         slide_markdown = generator.generate_slide_markdown(source_text)
     except Exception as e:

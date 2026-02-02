@@ -101,3 +101,25 @@ class TestGcpLocation:
         with patch.dict(os.environ, {}, clear=True):
             result = env_config.get_gcp_location(default="europe-west1")
             assert result == "europe-west1"
+
+
+class TestGeminiModel:
+    """Geminiモデル関連のテスト。"""
+
+    def test_get_gemini_model_with_env(self) -> None:
+        """環境変数からGEMINI_MODELを取得できる。"""
+        with patch.dict(os.environ, {"GEMINI_MODEL": "gemini-1.0-pro"}, clear=True):
+            result = env_config.get_gemini_model()
+            assert result == "gemini-1.0-pro"
+
+    def test_get_gemini_model_with_default(self) -> None:
+        """環境変数が設定されていない場合はデフォルト値を返す。"""
+        with patch.dict(os.environ, {}, clear=True):
+            result = env_config.get_gemini_model()
+            assert result == "gemini-1.5-pro"
+
+    def test_get_gemini_model_with_custom_default(self) -> None:
+        """カスタムデフォルト値を指定できる。"""
+        with patch.dict(os.environ, {}, clear=True):
+            result = env_config.get_gemini_model(default="gemini-1.5-flash")
+            assert result == "gemini-1.5-flash"
