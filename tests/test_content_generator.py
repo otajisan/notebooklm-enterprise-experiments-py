@@ -24,9 +24,7 @@ class TestContentGenerator:
         """テスト用のジェネレータインスタンスを作成する。"""
         with (
             patch.object(content_generator, "vertexai") as mock_vertexai,
-            patch.object(
-                content_generator, "GenerativeModel"
-            ) as mock_generative_model,
+            patch.object(content_generator, "GenerativeModel") as mock_generative_model,
         ):
             mock_vertexai.init = MagicMock()
             mock_generative_model.return_value = MagicMock()
@@ -41,9 +39,7 @@ class TestContentGenerator:
         """認証情報を指定して初期化できる。"""
         with (
             patch.object(content_generator, "vertexai") as mock_vertexai,
-            patch.object(
-                content_generator, "GenerativeModel"
-            ) as mock_generative_model,
+            patch.object(content_generator, "GenerativeModel") as mock_generative_model,
         ):
             generator = ContentGenerator(
                 project_id="test-project",

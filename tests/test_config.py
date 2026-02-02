@@ -116,7 +116,7 @@ class TestGeminiModel:
         """環境変数が設定されていない場合はデフォルト値を返す。"""
         with patch.dict(os.environ, {}, clear=True):
             result = env_config.get_gemini_model()
-            assert result == "gemini-1.5-pro"
+            assert result == "gemini-2.5-flash"
 
     def test_get_gemini_model_with_custom_default(self) -> None:
         """カスタムデフォルト値を指定できる。"""
