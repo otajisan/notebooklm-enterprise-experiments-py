@@ -16,7 +16,7 @@ Gemini Proを使用してプレゼンテーション用のスライド構成を�
     - GCP_PROJECT_ID: GCPプロジェクトID
     - ENGINE_ID: 検索アプリ（Engine）のID
     - LOCATION: GCPロケーション（デフォルト: global）
-    - GEMINI_MODEL: 使用するGeminiモデル（デフォルト: gemini-1.5-pro）
+    - GEMINI_MODEL: 使用するGeminiモデル（デフォルト: gemini-2.5-flash）
     - GCP_SERVICE_ACCOUNT_KEY_PATH または GCP_SERVICE_ACCOUNT_KEY_JSON: 認証情報
 """
 
@@ -61,7 +61,7 @@ def parse_args() -> argparse.Namespace:
         "--model",
         "-m",
         default=None,
-        help="使用するGeminiモデル（環境変数GEMINI_MODELまたはgemini-1.5-pro）",
+        help="使用するGeminiモデル（環境変数GEMINI_MODELまたはgemini-2.5-flash）",
     )
     return parser.parse_args()
 
@@ -144,6 +144,7 @@ def main() -> None:
     except Exception as e:
         print(f"生成エラー: {e}")
         import traceback
+
         traceback.print_exc()
         sys.exit(1)
 

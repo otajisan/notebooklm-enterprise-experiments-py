@@ -132,7 +132,7 @@ def get_service_account_key_info() -> dict | None:
     return None
 
 
-def get_gemini_model(default: str = "gemini-1.5-pro") -> str:
+def get_gemini_model(default: str = "gemini-2.5-flash") -> str:
     """
     Geminiモデル名を取得する。
 
