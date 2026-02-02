@@ -28,11 +28,7 @@ class TestVertexAISearchService:
         with patch(
             "notebooklm_enterprise_experiments_py.infrastructure.external."
             "vertex_ai_search_service.discoveryengine.SearchServiceClient"
-        ) as mock_client:
-            mock_client.return_value.serving_config_path.return_value = (
-                "projects/test-project/locations/global/dataStores/test-engine/"
-                "servingConfigs/default_serving_config"
-            )
+        ):
             return VertexAISearchService(
                 project_id="test-project",
                 location="global",
@@ -46,9 +42,6 @@ class TestVertexAISearchService:
             "notebooklm_enterprise_experiments_py.infrastructure.external."
             "vertex_ai_search_service.discoveryengine.SearchServiceClient"
         ) as mock_client:
-            mock_client.return_value.serving_config_path.return_value = (
-                "mock/serving/config/path"
-            )
             service = VertexAISearchService(
                 project_id="test-project",
                 location="global",
@@ -69,9 +62,6 @@ class TestVertexAISearchService:
             "notebooklm_enterprise_experiments_py.infrastructure.external."
             "vertex_ai_search_service.discoveryengine.SearchServiceClient"
         ) as mock_client:
-            mock_client.return_value.serving_config_path.return_value = (
-                "mock/serving/config/path"
-            )
             VertexAISearchService(
                 project_id="test-project",
                 location="us-central1",
@@ -81,6 +71,30 @@ class TestVertexAISearchService:
             # client_optionsが設定されていることを確認
             call_kwargs = mock_client.call_args.kwargs
             assert call_kwargs["client_options"] is not None
+
+    def test_serving_config_uses_engines_path(
+        self, mock_credentials: MagicMock
+    ) -> None:
+        """serving_configは/engines/を含むパスを使用する。"""
+        with patch(
+            "notebooklm_enterprise_experiments_py.infrastructure.external."
+            "vertex_ai_search_service.discoveryengine.SearchServiceClient"
+        ):
+            service = VertexAISearchService(
+                project_id="test-project",
+                location="global",
+                engine_id="test-engine",
+                credentials=mock_credentials,
+            )
+            # /engines/ を含み、/dataStores/ を含まないことを確認
+            assert "/engines/test-engine/" in service.serving_config
+            assert "/dataStores/" not in service.serving_config
+            expected = (
+                "projects/test-project/locations/global"
+                "/collections/default_collection/engines/test-engine"
+                "/servingConfigs/default_serving_config"
+            )
+            assert service.serving_config == expected
 
     def test_search_and_answer_returns_search_result(
         self, service: VertexAISearchService

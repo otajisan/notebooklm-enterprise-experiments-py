@@ -61,11 +61,12 @@ class VertexAISearchService(ISearchService):
         )
 
         # serving_configのパスを構築
-        self.serving_config = self.search_client.serving_config_path(
-            project=project_id,
-            location=location,
-            data_store=engine_id,
-            serving_config="default_serving_config",
+        # Generic Search Appでは /engines/ を使用する必要がある
+        # (serving_config_pathヘルパーは /dataStores/ を生成するため使用しない)
+        self.serving_config = (
+            f"projects/{self.project_id}/locations/{self.location}"
+            f"/collections/default_collection/engines/{self.engine_id}"
+            f"/servingConfigs/default_serving_config"
         )
 
     def _load_credentials(self) -> service_account.Credentials:
