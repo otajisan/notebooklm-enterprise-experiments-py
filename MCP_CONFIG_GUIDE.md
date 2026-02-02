@@ -37,7 +37,7 @@ GCP_SERVICE_ACCOUNT_KEY_JSON='{"type": "service_account", ...}'
 {
   "mcpServers": {
     "rag-server": {
-      "command": "uv",
+      "command": "/path/to/uv",
       "args": [
         "run",
         "--directory",
@@ -56,7 +56,7 @@ GCP_SERVICE_ACCOUNT_KEY_JSON='{"type": "service_account", ...}'
 }
 ```
 
-> **注意**: `/path/to/notebooklm-enterprise-experiments-py`をプロジェクトの実際のパスに置き換えてください。
+> **注意**: `/path/to/uv`と`/path/to/notebooklm-enterprise-experiments-py`を実際のパスに置き換えてください。`uv`のパスは`which uv`コマンドで確認できます。
 
 ## Claude Desktopでの設定
 
@@ -71,7 +71,7 @@ GCP_SERVICE_ACCOUNT_KEY_JSON='{"type": "service_account", ...}'
 {
   "mcpServers": {
     "rag-server": {
-      "command": "uv",
+      "command": "/path/to/uv",
       "args": [
         "run",
         "--directory",
@@ -89,6 +89,8 @@ GCP_SERVICE_ACCOUNT_KEY_JSON='{"type": "service_account", ...}'
   }
 }
 ```
+
+> **注意**: `/path/to/uv`と`/path/to/notebooklm-enterprise-experiments-py`を実際のパスに置き換えてください。`uv`のパスは`which uv`コマンドで確認できます。
 
 ## 利用可能なツール
 
