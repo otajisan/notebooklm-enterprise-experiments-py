@@ -130,3 +130,17 @@ def get_service_account_key_info() -> dict | None:
                 f"GCP_SERVICE_ACCOUNT_KEY_JSONの形式が不正です: {e}"
             ) from e
     return None
+
+
+def get_gemini_model(default: str = "gemini-1.5-pro") -> str:
+    """
+    Geminiモデル名を取得する。
+
+    Args:
+        default: デフォルトのモデル名
+
+    Returns:
+        Geminiモデル名
+    """
+    result = get_env("GEMINI_MODEL", default)
+    return result if result is not None else default
