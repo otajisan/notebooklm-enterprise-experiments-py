@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
-"""GCSバケット内のPDFからメタデータファイル（JSONL）を生成するスクリプト。
+"""GCSバケット内のドキュメントからメタデータファイル（JSONL）を生成するスクリプト。
 
-このスクリプトは、GCSバケット内のPDFファイルをスキャンし、
-Vertex AI Search用のインポートメタデータファイル（JSONL形式）を生成する。
+このスクリプトは、GCSバケット内のドキュメントファイル（PDF, Word, Excel等）を
+スキャンし、Vertex AI Search用のインポートメタデータファイル（JSONL形式）を生成する。
 
 実行方法:
     # 環境変数のバケット名を使用
@@ -41,11 +41,52 @@ from notebooklm_enterprise_experiments_py.infrastructure.config.env_config impor
     get_service_account_key_path,
 )
 
+# サポートするファイル拡張子とMIME Typeのマッピング
+_OOXML_BASE = "application/vnd.openxmlformats-officedocument"
+SUPPORTED_EXTENSIONS: dict[str, str] = {
+    ".pdf": "application/pdf",
+    ".txt": "text/plain",
+    ".md": "text/markdown",
+    ".csv": "text/csv",
+    ".docx": f"{_OOXML_BASE}.wordprocessingml.document",
+    ".doc": "application/msword",
+    ".xlsx": f"{_OOXML_BASE}.spreadsheetml.sheet",
+    ".xls": "application/vnd.ms-excel",
+    ".pptx": f"{_OOXML_BASE}.presentationml.presentation",
+    ".ppt": "application/vnd.ms-powerpoint",
+}
+
+
+def get_mime_type(filename: str) -> str | None:
+    """ファイル名から対応するMIME Typeを取得する。
+
+    Args:
+        filename: ファイル名
+
+    Returns:
+        MIME Type文字列、またはサポート外の場合はNone
+    """
+    ext = Path(filename).suffix.lower()
+    return SUPPORTED_EXTENSIONS.get(ext)
+
+
+def is_supported_file(filename: str) -> bool:
+    """ファイルがサポート対象かどうかを判定する。
+
+    Args:
+        filename: ファイル名
+
+    Returns:
+        サポート対象の場合True
+    """
+    ext = Path(filename).suffix.lower()
+    return ext in SUPPORTED_EXTENSIONS
+
 
 def parse_args() -> argparse.Namespace:
     """コマンドライン引数をパースする。"""
     parser = argparse.ArgumentParser(
-        description="GCSバケット内のPDFからメタデータファイル（JSONL）を生成する"
+        description="GCSバケット内のドキュメントからメタデータファイル（JSONL）を生成する"
     )
     parser.add_argument(
         "--bucket",
@@ -185,6 +226,11 @@ def generate_metadata_entry(blob: storage.Blob, bucket_name: str) -> dict:
     # カテゴリを推定
     category = categorize_document(filename)
 
+    # MIME Typeを決定（マッピングから取得、なければblobのcontent_typeを使用）
+    mime_type = (
+        get_mime_type(blob.name) or blob.content_type or "application/octet-stream"
+    )
+
     # メタデータエントリを作成
     entry = {
         "id": blob.name,
@@ -193,7 +239,7 @@ def generate_metadata_entry(blob: storage.Blob, bucket_name: str) -> dict:
             "category": category,
         },
         "content": {
-            "mimeType": blob.content_type or "application/pdf",
+            "mimeType": mime_type,
             "uri": f"gs://{bucket_name}/{blob.name}",
         },
     }
@@ -252,22 +298,34 @@ def main() -> None:
         print(f"GCSアクセスエラー: {e}")
         sys.exit(1)
 
-    # PDFファイルのみをフィルタリング
-    pdf_blobs = [b for b in blobs if b.name.lower().endswith(".pdf")]
-    print(f"検出されたPDFファイル: {len(pdf_blobs)}件")
+    # サポート対象のファイルをフィルタリング
+    supported_blobs = [b for b in blobs if is_supported_file(b.name)]
+
+    # 拡張子ごとのファイル数を集計
+    ext_counts: dict[str, int] = {}
+    for blob in supported_blobs:
+        ext = Path(blob.name).suffix.lower()
+        ext_counts[ext] = ext_counts.get(ext, 0) + 1
+
+    print(f"検出されたファイル: {len(supported_blobs)}件")
+    for ext, count in sorted(ext_counts.items()):
+        print(f"  - {ext}: {count}件")
     print()
 
-    if not pdf_blobs:
-        print("警告: PDFファイルが見つかりませんでした。")
+    if not supported_blobs:
+        print("警告: サポート対象のファイルが見つかりませんでした。")
+        print(f"サポート対象: {', '.join(SUPPORTED_EXTENSIONS.keys())}")
         sys.exit(0)
 
     # メタデータエントリを生成
     print("メタデータを生成中...")
     entries = []
-    for blob in pdf_blobs:
+    for blob in supported_blobs:
         entry = generate_metadata_entry(blob, bucket_name)
         entries.append(entry)
-        print(f"  - {entry['id']} (date: {entry['structData']['date']})")
+        entry_date = entry["structData"]["date"]
+        entry_type = entry["content"]["mimeType"]
+        print(f"  - {entry['id']} (date: {entry_date}, type: {entry_type})")
 
     print()
 
