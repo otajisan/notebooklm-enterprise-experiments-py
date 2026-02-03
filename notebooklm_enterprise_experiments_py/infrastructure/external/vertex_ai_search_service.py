@@ -3,6 +3,7 @@
 from pathlib import Path
 from typing import Any
 
+from google.api_core import exceptions as google_exceptions
 from google.api_core.client_options import ClientOptions
 from google.cloud import discoveryengine_v1alpha as discoveryengine
 from google.oauth2 import service_account
@@ -221,15 +222,35 @@ class VertexAISearchService(ISearchService):
 
         request = discoveryengine.SearchRequest(**request_params)
 
-        # 検索を実行
-        response = self.search_client.search(request=request)
+        # 検索を実行（フィルタエラー時はフォールバック）
+        try:
+            response = self.search_client.search(request=request)
 
-        # デバッグ出力
-        result_count = sum(1 for _ in response.results)
-        print(f"[DEBUG] Search returned {result_count} results")
+            # デバッグ出力
+            result_count = sum(1 for _ in response.results)
+            print(f"[DEBUG] Search returned {result_count} results")
 
-        # 再度イテレーション（response.resultsはイテレータなので再取得が必要）
-        response = self.search_client.search(request=request)
+            # 再度イテレーション（response.resultsはイテレータなので再取得が必要）
+            response = self.search_client.search(request=request)
+
+        except google_exceptions.InvalidArgument as e:
+            # フィルタ/ソートフィールドがサポートされていない場合
+            if "Unsupported field" in str(e):
+                print(
+                    "[WARNING] フィルタ/ソートフィールドがサポートされていません。"
+                    "フィルタなしで再検索します。"
+                )
+                print(
+                    "[INFO] Vertex AI Search コンソールで date フィールドの "
+                    "[Filterable] と [Sortable] を有効化してください。"
+                )
+                # フィルタ/ソートなしで再検索
+                request_params.pop("filter", None)
+                request_params.pop("order_by", None)
+                request = discoveryengine.SearchRequest(**request_params)
+                response = self.search_client.search(request=request)
+            else:
+                raise
 
         # レスポンスをパースしてDocumentSearchResultを返す
         return self._parse_document_response(response)
