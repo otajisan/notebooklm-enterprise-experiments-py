@@ -233,62 +233,50 @@ class VertexAISearchService(ISearchService):
                 continue
 
             # derived_struct_dataからメタデータを取得
-            struct_data = {}
-            if document.derived_struct_data:
-                struct_data = dict(document.derived_struct_data)
+            data = document.derived_struct_data
+            if not data:
+                continue
 
-            title = str(struct_data.get("title", "無題"))
-            url = str(struct_data.get("link", ""))
+            title = str(data.get("title", "無題"))
+            url = str(data.get("link", ""))
 
-            # コンテンツの取得（抽出セグメントを優先、スニペットはフォールバック）
-            content = ""
+            # コンテンツの取得
+            content_parts: list[str] = []
 
-            # 優先度1: 抽出セグメント（より長い本文テキスト）
-            extractive_segments = struct_data.get("extractive_segments", [])
-            if extractive_segments:
-                segment_texts = []
-                for segment in extractive_segments:
-                    if isinstance(segment, dict):
-                        segment_text = segment.get("content", "")
-                        if segment_text:
-                            segment_texts.append(str(segment_text))
-                if segment_texts:
-                    content = "\n...\n".join(segment_texts)
+            # 1. Extractive Segments/Answers (最優先: 長文の抽出)
+            # APIバージョンによってキーが異なる場合があるため両方チェック
+            segments = data.get("extractive_segments") or data.get("extractive_answers")
+            if segments:
+                for seg in segments:
+                    text = seg.get("content", "") if isinstance(seg, dict) else ""
+                    if text:
+                        content_parts.append(f"[Segment] {text}")
 
-            # 優先度2: 抽出回答（セグメントがない場合）
-            if not content:
-                extractive_answers = struct_data.get("extractive_answers", [])
-                if extractive_answers:
-                    answer_texts = []
-                    for answer in extractive_answers:
-                        if isinstance(answer, dict):
-                            answer_text = answer.get("content", "")
-                            if answer_text:
-                                answer_texts.append(str(answer_text))
-                    if answer_texts:
-                        content = "\n...\n".join(answer_texts)
+            # 2. Snippets (フォールバック: 短い要約)
+            snippets = data.get("snippets", [])
+            if snippets:
+                for snip in snippets:
+                    text = snip.get("snippet", "") if isinstance(snip, dict) else ""
+                    if text:
+                        content_parts.append(f"[Snippet] {text}")
 
-            # 優先度3: スニペット（フォールバック）
-            if not content:
-                snippets = struct_data.get("snippets", [])
-                if snippets:
-                    snippet_texts = []
-                    for snippet in snippets:
-                        if isinstance(snippet, dict):
-                            snippet_text = snippet.get("snippet", "")
-                            if snippet_text:
-                                snippet_texts.append(str(snippet_text))
-                    if snippet_texts:
-                        content = "\n".join(snippet_texts)
+            # 3. コンテンツを結合
+            full_content = "\n\n".join(content_parts)
 
-            if title or content or url:
-                documents.append(
-                    DocumentResult(
-                        title=title,
-                        content=content,
-                        url=url,
-                    )
+            # デバッグログ: 何文字取れたか確認する
+            print(f"[DEBUG] Title: {title} | Content Len: {len(full_content)}")
+
+            # コンテンツが空の場合はフォールバック
+            if not full_content:
+                full_content = "(本文なし)"
+
+            documents.append(
+                DocumentResult(
+                    title=title,
+                    content=full_content,
+                    url=url,
                 )
+            )
 
         return DocumentSearchResult(results=documents)
 
