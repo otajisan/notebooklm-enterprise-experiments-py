@@ -178,11 +178,14 @@ class VertexAISearchService(ISearchService):
         content_search_spec = discoveryengine.SearchRequest.ContentSearchSpec(
             snippet_spec=discoveryengine.SearchRequest.ContentSearchSpec.SnippetSpec(
                 return_snippet=True,
-                max_snippet_count=3,  # 各ドキュメントから最大3つのスニペットを取得
+                max_snippet_count=3,  # 最大3スニペット（フォールバック用）
             ),
             extractive_content_spec=discoveryengine.SearchRequest.ContentSearchSpec.ExtractiveContentSpec(
                 max_extractive_answer_count=2,  # 各ドキュメントから最大2つの抽出回答
-                max_extractive_segment_count=3,  # 最大3つの抽出セグメント
+                max_extractive_segment_count=3,  # 各結果から最大3つの抽出セグメント
+                num_previous_segments=1,  # 文脈を広げるため前後のセグメントも取得
+                num_next_segments=1,
+                return_extractive_segment_score=True,  # 関連度スコアを取得
             ),
         )
 
@@ -237,35 +240,46 @@ class VertexAISearchService(ISearchService):
             title = str(struct_data.get("title", "無題"))
             url = str(struct_data.get("link", ""))
 
-            # コンテンツの取得（スニペット、抽出回答、抽出セグメントから）
-            content_parts: list[str] = []
+            # コンテンツの取得（抽出セグメントを優先、スニペットはフォールバック）
+            content = ""
 
-            # スニペットから取得
-            snippets = struct_data.get("snippets", [])
-            for snippet in snippets:
-                if isinstance(snippet, dict):
-                    snippet_text = snippet.get("snippet", "")
-                    if snippet_text:
-                        content_parts.append(str(snippet_text))
-
-            # 抽出回答から取得
-            extractive_answers = struct_data.get("extractive_answers", [])
-            for answer in extractive_answers:
-                if isinstance(answer, dict):
-                    answer_text = answer.get("content", "")
-                    if answer_text:
-                        content_parts.append(str(answer_text))
-
-            # 抽出セグメントから取得
+            # 優先度1: 抽出セグメント（より長い本文テキスト）
             extractive_segments = struct_data.get("extractive_segments", [])
-            for segment in extractive_segments:
-                if isinstance(segment, dict):
-                    segment_text = segment.get("content", "")
-                    if segment_text:
-                        content_parts.append(str(segment_text))
+            if extractive_segments:
+                segment_texts = []
+                for segment in extractive_segments:
+                    if isinstance(segment, dict):
+                        segment_text = segment.get("content", "")
+                        if segment_text:
+                            segment_texts.append(str(segment_text))
+                if segment_texts:
+                    content = "\n...\n".join(segment_texts)
 
-            # コンテンツを結合
-            content = "\n".join(content_parts) if content_parts else ""
+            # 優先度2: 抽出回答（セグメントがない場合）
+            if not content:
+                extractive_answers = struct_data.get("extractive_answers", [])
+                if extractive_answers:
+                    answer_texts = []
+                    for answer in extractive_answers:
+                        if isinstance(answer, dict):
+                            answer_text = answer.get("content", "")
+                            if answer_text:
+                                answer_texts.append(str(answer_text))
+                    if answer_texts:
+                        content = "\n...\n".join(answer_texts)
+
+            # 優先度3: スニペット（フォールバック）
+            if not content:
+                snippets = struct_data.get("snippets", [])
+                if snippets:
+                    snippet_texts = []
+                    for snippet in snippets:
+                        if isinstance(snippet, dict):
+                            snippet_text = snippet.get("snippet", "")
+                            if snippet_text:
+                                snippet_texts.append(str(snippet_text))
+                    if snippet_texts:
+                        content = "\n".join(snippet_texts)
 
             if title or content or url:
                 documents.append(
