@@ -12,6 +12,8 @@ from notebooklm_enterprise_experiments_py.infrastructure.config.env_config impor
     get_service_account_key_path,
 )
 from notebooklm_enterprise_experiments_py.interfaces.search_interface import (
+    DocumentResult,
+    DocumentSearchResult,
     ISearchService,
     SearchCitation,
     SearchResult,
@@ -156,6 +158,125 @@ class VertexAISearchService(ISearchService):
 
         # レスポンスから結果をパース
         return self._parse_response(response)
+
+    def search_documents(
+        self, query: str, page_size: int = 20
+    ) -> DocumentSearchResult:
+        """ドキュメント検索を実行し、検索結果リストを返す。
+
+        API側での要約（summary_spec）を使用せず、検索結果（スニペット/抽出コンテンツ）
+        を大量に取得する。取得した結果はGeminiモデルに渡して回答生成に使用する。
+
+        Args:
+            query: 検索クエリ（質問テキスト）
+            page_size: 取得する検索結果の件数（デフォルト: 20）
+
+        Returns:
+            DocumentSearchResult: 検索結果のドキュメントリスト
+        """
+        # ContentSearchSpecの設定（要約なし、スニペット/抽出コンテンツを取得）
+        content_search_spec = discoveryengine.SearchRequest.ContentSearchSpec(
+            snippet_spec=discoveryengine.SearchRequest.ContentSearchSpec.SnippetSpec(
+                return_snippet=True,
+                max_snippet_count=3,  # 各ドキュメントから最大3つのスニペットを取得
+            ),
+            extractive_content_spec=discoveryengine.SearchRequest.ContentSearchSpec.ExtractiveContentSpec(
+                max_extractive_answer_count=2,  # 各ドキュメントから最大2つの抽出回答
+                max_extractive_segment_count=3,  # 最大3つの抽出セグメント
+            ),
+        )
+
+        # SearchRequestの作成
+        request = discoveryengine.SearchRequest(
+            serving_config=self.serving_config,
+            query=query,
+            page_size=page_size,
+            content_search_spec=content_search_spec,
+            query_expansion_spec=discoveryengine.SearchRequest.QueryExpansionSpec(
+                condition=discoveryengine.SearchRequest.QueryExpansionSpec.Condition.AUTO,
+            ),
+            spell_correction_spec=discoveryengine.SearchRequest.SpellCorrectionSpec(
+                mode=discoveryengine.SearchRequest.SpellCorrectionSpec.Mode.AUTO,
+            ),
+        )
+
+        # 検索を実行
+        response = self.search_client.search(request=request)
+
+        # デバッグ出力
+        result_count = sum(1 for _ in response.results)
+        print(f"[DEBUG] Search returned {result_count} results")
+
+        # 再度イテレーション（response.resultsはイテレータなので再取得が必要）
+        response = self.search_client.search(request=request)
+
+        # レスポンスをパースしてDocumentSearchResultを返す
+        return self._parse_document_response(response)
+
+    def _parse_document_response(self, response: Any) -> DocumentSearchResult:
+        """SearchResponseをパースしてDocumentSearchResultを返す。
+
+        Args:
+            response: Discovery Engineからの検索レスポンス
+
+        Returns:
+            DocumentSearchResult: パースされた検索結果
+        """
+        documents: list[DocumentResult] = []
+
+        for result in response.results:
+            document = result.document
+            if not document:
+                continue
+
+            # derived_struct_dataからメタデータを取得
+            struct_data = {}
+            if document.derived_struct_data:
+                struct_data = dict(document.derived_struct_data)
+
+            title = str(struct_data.get("title", "無題"))
+            url = str(struct_data.get("link", ""))
+
+            # コンテンツの取得（スニペット、抽出回答、抽出セグメントから）
+            content_parts: list[str] = []
+
+            # スニペットから取得
+            snippets = struct_data.get("snippets", [])
+            for snippet in snippets:
+                if isinstance(snippet, dict):
+                    snippet_text = snippet.get("snippet", "")
+                    if snippet_text:
+                        content_parts.append(str(snippet_text))
+
+            # 抽出回答から取得
+            extractive_answers = struct_data.get("extractive_answers", [])
+            for answer in extractive_answers:
+                if isinstance(answer, dict):
+                    answer_text = answer.get("content", "")
+                    if answer_text:
+                        content_parts.append(str(answer_text))
+
+            # 抽出セグメントから取得
+            extractive_segments = struct_data.get("extractive_segments", [])
+            for segment in extractive_segments:
+                if isinstance(segment, dict):
+                    segment_text = segment.get("content", "")
+                    if segment_text:
+                        content_parts.append(str(segment_text))
+
+            # コンテンツを結合
+            content = "\n".join(content_parts) if content_parts else ""
+
+            if title or content or url:
+                documents.append(
+                    DocumentResult(
+                        title=title,
+                        content=content,
+                        url=url,
+                    )
+                )
+
+        return DocumentSearchResult(results=documents)
 
     def _parse_response(self, response: Any) -> SearchResult:
         """SearchResponseをパースしてSearchResultを返す。
