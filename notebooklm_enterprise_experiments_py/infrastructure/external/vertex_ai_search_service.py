@@ -237,6 +237,15 @@ class VertexAISearchService(ISearchService):
             if not data:
                 continue
 
+            # デバッグログ: レスポンス構造を確認
+            print(f"\n[DEBUG] Result Keys: {list(data.keys())}")
+            if "snippets" in data and data["snippets"]:
+                print(f"[DEBUG] Snippet[0]: {data['snippets'][0]}")
+            if "extractive_segments" in data and data["extractive_segments"]:
+                print(f"[DEBUG] Segment[0]: {data['extractive_segments'][0]}")
+            if "extractive_answers" in data and data["extractive_answers"]:
+                print(f"[DEBUG] Answer[0]: {data['extractive_answers'][0]}")
+
             title = str(data.get("title", "無題"))
             url = str(data.get("link", ""))
 
