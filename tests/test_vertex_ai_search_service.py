@@ -8,6 +8,7 @@ from notebooklm_enterprise_experiments_py.infrastructure.external import (
     vertex_ai_search_service,
 )
 from notebooklm_enterprise_experiments_py.interfaces.search_interface import (
+    DocumentSearchResult,
     SearchResult,
 )
 
@@ -181,3 +182,80 @@ class TestVertexAISearchService:
                     location="global",
                     engine_id="test-engine",
                 )
+
+    def test_search_documents_returns_document_search_result(
+        self, service: VertexAISearchService
+    ) -> None:
+        """search_documentsがDocumentSearchResultを返す。"""
+        # モックドキュメントの設定
+        mock_doc = MagicMock()
+        mock_doc.derived_struct_data = {
+            "title": "テストドキュメント",
+            "link": "https://example.com/test",
+            "extractive_segments": [{"content": "テスト内容"}],
+        }
+
+        mock_result = MagicMock()
+        mock_result.document = mock_doc
+
+        mock_response = MagicMock()
+        mock_response.results = [mock_result]
+
+        service.search_client.search.return_value = mock_response
+
+        result = service.search_documents("テストクエリ")
+
+        assert isinstance(result, DocumentSearchResult)
+        assert len(result.results) == 1
+        assert result.results[0].title == "テストドキュメント"
+
+    def test_search_documents_with_filter(self, service: VertexAISearchService) -> None:
+        """search_documentsがfilter_strパラメータを正しく渡す。"""
+        mock_response = MagicMock()
+        mock_response.results = []
+
+        service.search_client.search.return_value = mock_response
+
+        filter_str = "date >= '2026-01-26' AND date <= '2026-01-30'"
+        service.search_documents("議事録", filter_str=filter_str)
+
+        # searchが呼ばれたリクエストを確認
+        call_args = service.search_client.search.call_args
+        request = call_args.kwargs.get("request")
+        assert request.filter == filter_str
+
+    def test_search_documents_with_order_by(
+        self, service: VertexAISearchService
+    ) -> None:
+        """search_documentsがorder_byパラメータを正しく渡す。"""
+        mock_response = MagicMock()
+        mock_response.results = []
+
+        service.search_client.search.return_value = mock_response
+
+        order_by = "date desc"
+        service.search_documents("朝会", order_by=order_by)
+
+        # searchが呼ばれたリクエストを確認
+        call_args = service.search_client.search.call_args
+        request = call_args.kwargs.get("request")
+        assert request.order_by == order_by
+
+    def test_search_documents_with_filter_and_order_by(
+        self, service: VertexAISearchService
+    ) -> None:
+        """search_documentsがfilter_strとorder_by両方を正しく渡す。"""
+        mock_response = MagicMock()
+        mock_response.results = []
+
+        service.search_client.search.return_value = mock_response
+
+        filter_str = "date >= '2026-01-01'"
+        order_by = "date desc"
+        service.search_documents("議事録", filter_str=filter_str, order_by=order_by)
+
+        # searchが呼ばれたリクエストを確認
+        call_args = service.search_client.search.call_args
+        request = call_args.kwargs.get("request")
+        assert request.filter == filter_str
+        assert request.order_by == order_by

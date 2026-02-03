@@ -174,3 +174,120 @@ flowchart TD
         call_args = generator.model.generate_content.call_args
         prompt = call_args[0][0]
         assert source_text in prompt
+
+    def test_generate_search_params_with_date_range(
+        self, generator: ContentGenerator
+    ) -> None:
+        """日付範囲指定がある場合、filterとorder_byを返す。"""
+        mock_response = MagicMock()
+        mock_response.text = """{
+            "query": "議事録",
+            "filter": "date >= '2026-01-26' AND date <= '2026-01-30'",
+            "order_by": null
+        }"""
+        generator.model.generate_content.return_value = mock_response
+
+        result = generator.generate_search_params("2026/1/26〜1/30の議事録")
+
+        assert result["query"] == "議事録"
+        assert "date >= '2026-01-26'" in result["filter"]
+        assert result["order_by"] is None
+
+    def test_generate_search_params_with_order_by(
+        self, generator: ContentGenerator
+    ) -> None:
+        """「直近」の場合、order_byを返す。"""
+        mock_response = MagicMock()
+        mock_response.text = """{
+            "query": "朝会",
+            "filter": null,
+            "order_by": "date desc"
+        }"""
+        generator.model.generate_content.return_value = mock_response
+
+        result = generator.generate_search_params("直近の朝会")
+
+        assert result["query"] == "朝会"
+        assert result["filter"] is None
+        assert result["order_by"] == "date desc"
+
+    def test_generate_search_params_without_date(
+        self, generator: ContentGenerator
+    ) -> None:
+        """日付指定がない場合、filterとorder_byはNone。"""
+        mock_response = MagicMock()
+        mock_response.text = """{
+            "query": "セキュリティに関するドキュメント",
+            "filter": null,
+            "order_by": null
+        }"""
+        generator.model.generate_content.return_value = mock_response
+
+        result = generator.generate_search_params("セキュリティに関するドキュメント")
+
+        assert result["query"] == "セキュリティに関するドキュメント"
+        assert result["filter"] is None
+        assert result["order_by"] is None
+
+    def test_generate_search_params_with_json_code_block(
+        self, generator: ContentGenerator
+    ) -> None:
+        """JSONコードブロックが含まれていても正しくパースする。"""
+        mock_response = MagicMock()
+        mock_response.text = """```json
+{
+    "query": "議事録",
+    "filter": "date = '2026-01-30'",
+    "order_by": null
+}
+```"""
+        generator.model.generate_content.return_value = mock_response
+
+        result = generator.generate_search_params("1/30の議事録")
+
+        assert result["query"] == "議事録"
+        assert result["filter"] == "date = '2026-01-30'"
+
+    def test_generate_search_params_invalid_json(
+        self, generator: ContentGenerator
+    ) -> None:
+        """無効なJSONの場合、デフォルト値を返す。"""
+        mock_response = MagicMock()
+        mock_response.text = "invalid json"
+        generator.model.generate_content.return_value = mock_response
+
+        result = generator.generate_search_params("テストクエリ")
+
+        assert result["query"] == "テストクエリ"
+        assert result["filter"] is None
+        assert result["order_by"] is None
+
+    def test_generate_answer_from_context(self, generator: ContentGenerator) -> None:
+        """検索結果から回答を生成する。"""
+        mock_response = MagicMock()
+        mock_response.text = "検索結果に基づく回答です。"
+        generator.model.generate_content.return_value = mock_response
+
+        search_results = [
+            {
+                "title": "ドキュメント1",
+                "content": "テスト内容1",
+                "url": "https://example.com/doc1",
+            },
+            {
+                "title": "ドキュメント2",
+                "content": "テスト内容2",
+                "url": "https://example.com/doc2",
+            },
+        ]
+
+        result = generator.generate_answer_from_context("質問文", search_results)
+
+        assert result == "検索結果に基づく回答です。"
+
+        # プロンプトに検索結果が含まれていることを確認
+        call_args = generator.model.generate_content.call_args
+        prompt = call_args[0][0]
+        assert "ドキュメント1" in prompt
+        assert "テスト内容1" in prompt
+        assert "質問文" in prompt

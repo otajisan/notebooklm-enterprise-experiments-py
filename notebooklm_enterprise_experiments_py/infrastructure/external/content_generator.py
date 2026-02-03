@@ -1,5 +1,7 @@
 """Gemini Proを使用したコンテンツ生成サービス。"""
 
+import json
+from datetime import datetime
 from pathlib import Path
 
 import vertexai
@@ -283,6 +285,128 @@ class ContentGenerator:
                 query,
                 "",
                 "【Answer】",
+            ]
+        )
+        return instructions
+
+    def generate_search_params(self, user_query: str) -> dict:
+        """自然言語の質問から検索パラメータを抽出する。
+
+        Geminiを使用して、ユーザーの質問から検索キーワード、日付フィルタ、
+        ソート順を構造化データとして抽出する。
+
+        Args:
+            user_query: ユーザーの質問
+
+        Returns:
+            検索パラメータを含む辞書:
+            {
+                "query": str,       # 検索キーワード
+                "filter": str|None, # 日付フィルタ条件
+                "order_by": str|None # ソート順
+            }
+        """
+        prompt = self._build_search_params_prompt(user_query)
+        response = self.model.generate_content(prompt)
+
+        # レスポンスからJSONを抽出
+        response_text = response.text.strip()
+
+        # コードブロックを除去
+        if response_text.startswith("```json"):
+            response_text = response_text[7:]
+        if response_text.startswith("```"):
+            response_text = response_text[3:]
+        if response_text.endswith("```"):
+            response_text = response_text[:-3]
+        response_text = response_text.strip()
+
+        try:
+            params = json.loads(response_text)
+            return {
+                "query": params.get("query", user_query),
+                "filter": params.get("filter"),
+                "order_by": params.get("order_by"),
+            }
+        except json.JSONDecodeError:
+            # JSONパースに失敗した場合はデフォルト値を返す
+            return {
+                "query": user_query,
+                "filter": None,
+                "order_by": None,
+            }
+
+    def _build_search_params_prompt(self, user_query: str) -> str:
+        """検索パラメータ抽出用のプロンプトを構築する。
+
+        Args:
+            user_query: ユーザーの質問
+
+        Returns:
+            プロンプト文字列
+        """
+        # 現在の日時を取得
+        current_date = datetime.now().strftime("%Y年%m月%d日")
+
+        instructions = "\n".join(
+            [
+                f"現在の日時は {current_date} です。",
+                "",
+                "ユーザーの質問から、以下の情報を抽出してJSONで返してください：",
+                "- query: 検索キーワード（時間表現を除いた検索文）",
+                "- filter: 日付フィルタ条件（Vertex AI Search形式）",
+                "- order_by: ソート順",
+                "",
+                "【ルール】",
+                "1. 期間指定（例: 1/26〜1/30）の場合:",
+                "   filter: \"date >= '2026-01-26' AND date <= '2026-01-30'\"",
+                "",
+                "2. 「直近」「最新」「最近」の場合:",
+                '   order_by: "date desc"',
+                "",
+                "3. 「古い順」「日付順」の場合:",
+                '   order_by: "date asc"',
+                "",
+                "4. 特定の日付（例: 1/30の）の場合:",
+                "   filter: \"date = '2026-01-30'\"",
+                "",
+                "5. 日付指定がない場合:",
+                "   filter: null, order_by: null",
+                "",
+                "6. 年が省略されている場合は現在の年を補完",
+                "",
+                "【出力形式】",
+                "JSONのみを出力してください。説明は不要です。",
+                "",
+                "例1:",
+                '入力: "2026/1/26〜1/30の議事録"',
+                "出力:",
+                "{",
+                '  "query": "議事録",',
+                "  \"filter\": \"date >= '2026-01-26' AND date <= '2026-01-30'\",",
+                '  "order_by": null',
+                "}",
+                "",
+                "例2:",
+                '入力: "直近の朝会"',
+                "出力:",
+                "{",
+                '  "query": "朝会",',
+                '  "filter": null,',
+                '  "order_by": "date desc"',
+                "}",
+                "",
+                "例3:",
+                '入力: "セキュリティに関するドキュメント"',
+                "出力:",
+                "{",
+                '  "query": "セキュリティに関するドキュメント",',
+                '  "filter": null,',
+                '  "order_by": null',
+                "}",
+                "",
+                "【ユーザーの質問】",
+                user_query,
             ]
         )
         return instructions
