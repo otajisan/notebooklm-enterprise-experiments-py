@@ -86,10 +86,39 @@ def main() -> None:
     print()
 
     try:
+        # Step 0: クエリから検索パラメータを抽出
+        print("Step 0: 検索パラメータの抽出")
+        print("-" * 40)
+
+        model_name = get_gemini_model()
+        print(f"使用モデル: {model_name}")
+
+        generator = ContentGenerator(
+            project_id=project_id,
+            location="us-central1",
+            model_name=model_name,
+        )
+
+        search_params = generator.generate_search_params(query)
+        search_query = search_params.get("query", query)
+        filter_str = search_params.get("filter")
+        order_by = search_params.get("order_by")
+
+        print(f"検索クエリ: {search_query}")
+        if filter_str:
+            print(f"フィルタ: {filter_str}")
+        if order_by:
+            print(f"ソート: {order_by}")
+        print()
+
         # Step 1: 検索を実行（20件取得）
         print("Step 1: ドキュメント検索")
         print("-" * 40)
-        search_result = service.search_documents(query)
+        search_result = service.search_documents(
+            search_query,
+            filter_str=filter_str,
+            order_by=order_by,
+        )
 
         if not search_result.results:
             print("検索結果が見つかりませんでした。")
@@ -114,15 +143,6 @@ def main() -> None:
         # Step 2: Geminiで回答を生成
         print("Step 2: 回答生成（Gemini）")
         print("-" * 40)
-
-        model_name = get_gemini_model()
-        print(f"使用モデル: {model_name}")
-
-        generator = ContentGenerator(
-            project_id=project_id,
-            location="us-central1",
-            model_name=model_name,
-        )
 
         # 検索結果を辞書リストに変換
         search_results_dict = [

@@ -149,9 +149,21 @@ async def _search_documents(arguments: dict) -> list[TextContent]:
         return [TextContent(type="text", text="エラー: queryパラメータが必要です。")]
 
     try:
+        # Step 0: クエリから検索パラメータを抽出（日付フィルタ・ソート）
+        generator = _get_content_generator()
+        search_params = generator.generate_search_params(query)
+
+        search_query = search_params.get("query", query)
+        filter_str = search_params.get("filter")
+        order_by = search_params.get("order_by")
+
         # Step 1: 検索を実行（20件取得）
         search_service = _get_search_service()
-        search_result = search_service.search_documents(query)
+        search_result = search_service.search_documents(
+            search_query,
+            filter_str=filter_str,
+            order_by=order_by,
+        )
 
         if not search_result.results:
             return [TextContent(type="text", text="検索結果が見つかりませんでした。")]
@@ -167,7 +179,6 @@ async def _search_documents(arguments: dict) -> list[TextContent]:
         ]
 
         # Step 3: Geminiで回答を生成
-        generator = _get_content_generator()
         answer = generator.generate_answer_from_context(query, search_results_dict)
 
         # 結果をフォーマット
@@ -178,6 +189,16 @@ async def _search_documents(arguments: dict) -> list[TextContent]:
         output_parts.append("")
         output_parts.append("---")
         output_parts.append("")
+
+        # フィルタ情報を表示（設定されている場合）
+        if filter_str or order_by:
+            output_parts.append("### 検索条件")
+            if filter_str:
+                output_parts.append(f"- フィルタ: {filter_str}")
+            if order_by:
+                output_parts.append(f"- ソート: {order_by}")
+            output_parts.append("")
+
         output_parts.append("### 参照ドキュメント")
         for i, doc in enumerate(search_result.results[:10], 1):  # 上位10件を表示
             output_parts.append(f"{i}. **{doc.title}**")
@@ -198,9 +219,21 @@ async def _generate_slide_draft(arguments: dict) -> list[TextContent]:
         return [TextContent(type="text", text="エラー: queryパラメータが必要です。")]
 
     try:
+        # Step 0: クエリから検索パラメータを抽出（日付フィルタ・ソート）
+        generator = _get_content_generator()
+        search_params = generator.generate_search_params(query)
+
+        search_query = search_params.get("query", query)
+        filter_str = search_params.get("filter")
+        order_by = search_params.get("order_by")
+
         # Step 1: 検索を実行（20件取得）
         search_service = _get_search_service()
-        search_result = search_service.search_documents(query)
+        search_result = search_service.search_documents(
+            search_query,
+            filter_str=filter_str,
+            order_by=order_by,
+        )
 
         if not search_result.results:
             return [
@@ -221,7 +254,6 @@ async def _generate_slide_draft(arguments: dict) -> list[TextContent]:
         source_text = "\n".join(source_parts)
 
         # Step 3: スライド生成
-        generator = _get_content_generator()
         slide_markdown = generator.generate_slide_markdown(source_text)
 
         return [TextContent(type="text", text=slide_markdown)]
@@ -239,9 +271,21 @@ async def _generate_diagram(arguments: dict) -> list[TextContent]:
     chart_type = arguments.get("chart_type", "flowchart")
 
     try:
+        # Step 0: クエリから検索パラメータを抽出（日付フィルタ・ソート）
+        generator = _get_content_generator()
+        search_params = generator.generate_search_params(query)
+
+        search_query = search_params.get("query", query)
+        filter_str = search_params.get("filter")
+        order_by = search_params.get("order_by")
+
         # Step 1: 検索を実行（20件取得）
         search_service = _get_search_service()
-        search_result = search_service.search_documents(query)
+        search_result = search_service.search_documents(
+            search_query,
+            filter_str=filter_str,
+            order_by=order_by,
+        )
 
         if not search_result.results:
             return [
@@ -259,7 +303,6 @@ async def _generate_diagram(arguments: dict) -> list[TextContent]:
         source_text = "\n\n".join(source_parts)
 
         # Step 3: 図解生成
-        generator = _get_content_generator()
         mermaid_code = generator.generate_infographic_code(source_text, chart_type)
 
         return [TextContent(type="text", text=mermaid_code)]

@@ -159,7 +159,13 @@ class VertexAISearchService(ISearchService):
         # レスポンスから結果をパース
         return self._parse_response(response)
 
-    def search_documents(self, query: str, page_size: int = 20) -> DocumentSearchResult:
+    def search_documents(
+        self,
+        query: str,
+        page_size: int = 20,
+        filter_str: str | None = None,
+        order_by: str | None = None,
+    ) -> DocumentSearchResult:
         """ドキュメント検索を実行し、検索結果リストを返す。
 
         API側での要約（summary_spec）を使用せず、検索結果（スニペット/抽出コンテンツ）
@@ -168,6 +174,8 @@ class VertexAISearchService(ISearchService):
         Args:
             query: 検索クエリ（質問テキスト）
             page_size: 取得する検索結果の件数（デフォルト: 20）
+            filter_str: フィルタ条件（例: "date >= '2026-01-26'"）
+            order_by: ソート順（例: "date desc"）
 
         Returns:
             DocumentSearchResult: 検索結果のドキュメントリスト
@@ -188,18 +196,30 @@ class VertexAISearchService(ISearchService):
         )
 
         # SearchRequestの作成
-        request = discoveryengine.SearchRequest(
-            serving_config=self.serving_config,
-            query=query,
-            page_size=page_size,
-            content_search_spec=content_search_spec,
-            query_expansion_spec=discoveryengine.SearchRequest.QueryExpansionSpec(
+        request_params = {
+            "serving_config": self.serving_config,
+            "query": query,
+            "page_size": page_size,
+            "content_search_spec": content_search_spec,
+            "query_expansion_spec": discoveryengine.SearchRequest.QueryExpansionSpec(
                 condition=discoveryengine.SearchRequest.QueryExpansionSpec.Condition.AUTO,
             ),
-            spell_correction_spec=discoveryengine.SearchRequest.SpellCorrectionSpec(
+            "spell_correction_spec": discoveryengine.SearchRequest.SpellCorrectionSpec(
                 mode=discoveryengine.SearchRequest.SpellCorrectionSpec.Mode.AUTO,
             ),
-        )
+        }
+
+        # フィルタ条件があれば追加
+        if filter_str:
+            request_params["filter"] = filter_str
+            print(f"[DEBUG] Filter: {filter_str}")
+
+        # ソート順があれば追加
+        if order_by:
+            request_params["order_by"] = order_by
+            print(f"[DEBUG] Order by: {order_by}")
+
+        request = discoveryengine.SearchRequest(**request_params)
 
         # 検索を実行
         response = self.search_client.search(request=request)

@@ -144,3 +144,13 @@ def get_gemini_model(default: str = "gemini-2.5-flash") -> str:
     """
     result = get_env("GEMINI_MODEL", default)
     return result if result is not None else default
+
+
+def get_gcs_bucket_name() -> str | None:
+    """
+    GCSバケット名を取得する。
+
+    Returns:
+        GCSバケット名、またはNone
+    """
+    return get_env("GCS_BUCKET_NAME")
