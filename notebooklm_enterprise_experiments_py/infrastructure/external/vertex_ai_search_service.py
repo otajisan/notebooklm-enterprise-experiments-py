@@ -159,9 +159,7 @@ class VertexAISearchService(ISearchService):
         # レスポンスから結果をパース
         return self._parse_response(response)
 
-    def search_documents(
-        self, query: str, page_size: int = 20
-    ) -> DocumentSearchResult:
+    def search_documents(self, query: str, page_size: int = 20) -> DocumentSearchResult:
         """ドキュメント検索を実行し、検索結果リストを返す。
 
         API側での要約（summary_spec）を使用せず、検索結果（スニペット/抽出コンテンツ）
