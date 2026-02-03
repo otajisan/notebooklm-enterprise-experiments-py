@@ -109,9 +109,12 @@ class TestSearchDocuments:
             mock_get_service.return_value = mock_service
 
             mock_generator = MagicMock()
+            filter_val = (
+                'structData.date >= "2026-01-26" AND structData.date <= "2026-01-30"'
+            )
             mock_generator.generate_search_params.return_value = {
                 "query": "議事録",
-                "filter": "date >= '2026-01-26' AND date <= '2026-01-30'",
+                "filter": filter_val,
                 "order_by": None,
             }
             mock_generator.generate_answer_from_context.return_value = "テスト回答"
@@ -127,7 +130,7 @@ class TestSearchDocuments:
             # search_documentsがフィルタ付きで呼ばれたことを確認
             mock_service.search_documents.assert_called_once_with(
                 "議事録",
-                filter_str="date >= '2026-01-26' AND date <= '2026-01-30'",
+                filter_str=filter_val,
                 order_by=None,
             )
 

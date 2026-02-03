@@ -234,16 +234,20 @@ class VertexAISearchService(ISearchService):
             response = self.search_client.search(request=request)
 
         except google_exceptions.InvalidArgument as e:
-            # フィルタ/ソートフィールドがサポートされていない場合
-            if "Unsupported field" in str(e):
+            error_msg = str(e)
+            # フィルタ/ソートに関するエラーの場合はフォールバック
+            filter_errors = [
+                "Unsupported field",
+                "Invalid filter syntax",
+                "Unsupported rhs value",
+                "Parsing filter failed",
+            ]
+            if any(err in error_msg for err in filter_errors):
                 print(
-                    "[WARNING] フィルタ/ソートフィールドがサポートされていません。"
+                    "[WARNING] フィルタ/ソート構文エラー。"
                     "フィルタなしで再検索します。"
                 )
-                print(
-                    "[INFO] Vertex AI Search コンソールで date フィールドの "
-                    "[Filterable] と [Sortable] を有効化してください。"
-                )
+                print(f"[DEBUG] エラー詳細: {error_msg[:200]}")
                 # フィルタ/ソートなしで再検索
                 request_params.pop("filter", None)
                 request_params.pop("order_by", None)

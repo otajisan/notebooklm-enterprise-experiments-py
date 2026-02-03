@@ -180,17 +180,19 @@ flowchart TD
     ) -> None:
         """日付範囲指定がある場合、filterとorder_byを返す。"""
         mock_response = MagicMock()
-        mock_response.text = """{
-            "query": "議事録",
-            "filter": "date >= '2026-01-26' AND date <= '2026-01-30'",
-            "order_by": null
-        }"""
+        # JSONとして有効な形式（filter値内のダブルクォートはエスケープ）
+        mock_response.text = (
+            '{"query": "議事録", '
+            '"filter": "structData.date >= \\"2026-01-26\\" '
+            'AND structData.date <= \\"2026-01-30\\"", '
+            '"order_by": null}'
+        )
         generator.model.generate_content.return_value = mock_response
 
         result = generator.generate_search_params("2026/1/26〜1/30の議事録")
 
         assert result["query"] == "議事録"
-        assert "date >= '2026-01-26'" in result["filter"]
+        assert "structData.date >=" in result["filter"]
         assert result["order_by"] is None
 
     def test_generate_search_params_with_order_by(
@@ -201,7 +203,7 @@ flowchart TD
         mock_response.text = """{
             "query": "朝会",
             "filter": null,
-            "order_by": "date desc"
+            "order_by": "structData.date desc"
         }"""
         generator.model.generate_content.return_value = mock_response
 
@@ -209,7 +211,7 @@ flowchart TD
 
         assert result["query"] == "朝会"
         assert result["filter"] is None
-        assert result["order_by"] == "date desc"
+        assert result["order_by"] == "structData.date desc"
 
     def test_generate_search_params_without_date(
         self, generator: ContentGenerator
@@ -237,7 +239,7 @@ flowchart TD
         mock_response.text = """```json
 {
     "query": "議事録",
-    "filter": "date = '2026-01-30'",
+    "filter": "structData.date = \\"2026-01-30\\"",
     "order_by": null
 }
 ```"""
@@ -246,7 +248,7 @@ flowchart TD
         result = generator.generate_search_params("1/30の議事録")
 
         assert result["query"] == "議事録"
-        assert result["filter"] == "date = '2026-01-30'"
+        assert result["filter"] == 'structData.date = "2026-01-30"'
 
     def test_generate_search_params_invalid_json(
         self, generator: ContentGenerator
