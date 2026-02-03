@@ -21,6 +21,7 @@
 """
 
 import argparse
+import hashlib
 import json
 import re
 import sys
@@ -81,6 +82,21 @@ def is_supported_file(filename: str) -> bool:
     """
     ext = Path(filename).suffix.lower()
     return ext in SUPPORTED_EXTENSIONS
+
+
+def generate_document_id(blob_name: str) -> str:
+    """blob名からVertex AI Search用の有効なドキュメントIDを生成する。
+
+    Vertex AI Searchのid制約: [a-zA-Z0-9-_]* のみ許可
+    日本語やスラッシュ、スペースを含むファイル名はSHA256ハッシュに変換する。
+
+    Args:
+        blob_name: GCSのblob名（例: "books/資料.pdf"）
+
+    Returns:
+        有効なドキュメントID（SHA256ハッシュの16進数文字列）
+    """
+    return hashlib.sha256(blob_name.encode("utf-8")).hexdigest()
 
 
 def parse_args() -> argparse.Namespace:
@@ -232,11 +248,14 @@ def generate_metadata_entry(blob: storage.Blob, bucket_name: str) -> dict:
     )
 
     # メタデータエントリを作成
+    # idはVertex AI Searchの制約([a-zA-Z0-9-_]*)に準拠するためハッシュ化
+    # 元のファイル名はstructData.filenameに保持
     entry = {
-        "id": blob.name,
+        "id": generate_document_id(blob.name),
         "structData": {
             "date": date,
             "category": category,
+            "filename": blob.name,
         },
         "content": {
             "mimeType": mime_type,
@@ -325,7 +344,8 @@ def main() -> None:
         entries.append(entry)
         entry_date = entry["structData"]["date"]
         entry_type = entry["content"]["mimeType"]
-        print(f"  - {entry['id']} (date: {entry_date}, type: {entry_type})")
+        entry_filename = entry["structData"]["filename"]
+        print(f"  - {entry_filename} (date: {entry_date}, type: {entry_type})")
 
     print()
 
