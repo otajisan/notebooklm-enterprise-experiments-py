@@ -244,8 +244,7 @@ class VertexAISearchService(ISearchService):
             ]
             if any(err in error_msg for err in filter_errors):
                 print(
-                    "[WARNING] フィルタ/ソート構文エラー。"
-                    "フィルタなしで再検索します。"
+                    "[WARNING] フィルタ/ソート構文エラー。フィルタなしで再検索します。"
                 )
                 print(f"[DEBUG] エラー詳細: {error_msg[:200]}")
                 # フィルタ/ソートなしで再検索
