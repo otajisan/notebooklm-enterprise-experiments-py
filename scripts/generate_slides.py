@@ -107,27 +107,32 @@ def main() -> None:
             location=location,
             engine_id=engine_id,
         )
-        search_result = search_service.search_and_answer(args.query)
+        # 新しいsearch_documentsメソッドを使用（20件取得）
+        search_result = search_service.search_documents(args.query)
     except Exception as e:
         print(f"検索エラー: {e}")
         sys.exit(1)
 
-    if not search_result.summary:
+    if not search_result.results:
         print("警告: 検索結果が空です。スライド生成をスキップします。")
         sys.exit(1)
 
-    print("【検索結果サマリー】")
-    summary = search_result.summary
-    if len(summary) > 500:
-        print(summary[:500] + "...")
-    else:
-        print(summary)
+    print(f"【検索結果】{len(search_result.results)}件のドキュメントを取得")
+    for i, doc in enumerate(search_result.results[:5], 1):
+        print(f"  {i}. {doc.title}")
+    if len(search_result.results) > 5:
+        print(f"  ... 他{len(search_result.results) - 5}件")
     print()
 
-    # 検索結果と引用元を組み合わせてソーステキストを作成
-    source_text = f"【要約】\n{search_result.summary}\n\n【参照ドキュメント】\n"
-    for i, citation in enumerate(search_result.citations, 1):
-        source_text += f"{i}. {citation.title}\n   URL: {citation.url}\n"
+    # 検索結果からソーステキストを構築
+    source_parts = ["【検索結果】"]
+    for i, doc in enumerate(search_result.results, 1):
+        source_parts.append(f"\n[Document {i}] {doc.title}")
+        if doc.content:
+            source_parts.append(f"内容: {doc.content}")
+        if doc.url:
+            source_parts.append(f"URL: {doc.url}")
+    source_text = "\n".join(source_parts)
 
     # Step 2: スライド生成
     print("Step 2: スライド構成生成（Gemini Pro）")

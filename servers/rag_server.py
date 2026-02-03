@@ -143,35 +143,47 @@ async def call_tool(name: str, arguments: dict) -> list[TextContent]:
 
 
 async def _search_documents(arguments: dict) -> list[TextContent]:
-    """ドキュメント検索を実行する。"""
+    """ドキュメント検索を実行し、Geminiで回答を生成する。"""
     query = arguments.get("query", "")
     if not query:
         return [TextContent(type="text", text="エラー: queryパラメータが必要です。")]
 
     try:
+        # Step 1: 検索を実行（20件取得）
         search_service = _get_search_service()
-        result = search_service.search_and_answer(query)
+        search_result = search_service.search_documents(query)
+
+        if not search_result.results:
+            return [TextContent(type="text", text="検索結果が見つかりませんでした。")]
+
+        # Step 2: 検索結果を辞書リストに変換
+        search_results_dict = [
+            {
+                "title": doc.title,
+                "content": doc.content,
+                "url": doc.url,
+            }
+            for doc in search_result.results
+        ]
+
+        # Step 3: Geminiで回答を生成
+        generator = _get_content_generator()
+        answer = generator.generate_answer_from_context(query, search_results_dict)
 
         # 結果をフォーマット
         output_parts = []
-        output_parts.append("## 検索結果")
+        output_parts.append("## 回答")
         output_parts.append("")
-
-        if result.summary:
-            output_parts.append("### 要約")
-            output_parts.append(result.summary)
-            output_parts.append("")
-
-        if result.citations:
-            output_parts.append("### 参照ドキュメント")
-            for i, citation in enumerate(result.citations, 1):
-                output_parts.append(f"{i}. **{citation.title}**")
-                if citation.url:
-                    output_parts.append(f"   - URL: {citation.url}")
-            output_parts.append("")
-
-        if not result.summary and not result.citations:
-            output_parts.append("検索結果が見つかりませんでした。")
+        output_parts.append(answer)
+        output_parts.append("")
+        output_parts.append("---")
+        output_parts.append("")
+        output_parts.append("### 参照ドキュメント")
+        for i, doc in enumerate(search_result.results[:10], 1):  # 上位10件を表示
+            output_parts.append(f"{i}. **{doc.title}**")
+            if doc.url:
+                output_parts.append(f"   - URL: {doc.url}")
+        output_parts.append("")
 
         return [TextContent(type="text", text="\n".join(output_parts))]
 
@@ -186,11 +198,11 @@ async def _generate_slide_draft(arguments: dict) -> list[TextContent]:
         return [TextContent(type="text", text="エラー: queryパラメータが必要です。")]
 
     try:
-        # Step 1: 検索を実行
+        # Step 1: 検索を実行（20件取得）
         search_service = _get_search_service()
-        search_result = search_service.search_and_answer(query)
+        search_result = search_service.search_documents(query)
 
-        if not search_result.summary:
+        if not search_result.results:
             return [
                 TextContent(
                     type="text",
@@ -198,12 +210,17 @@ async def _generate_slide_draft(arguments: dict) -> list[TextContent]:
                 )
             ]
 
-        # 検索結果と引用元を組み合わせてソーステキストを作成
-        source_text = f"【要約】\n{search_result.summary}\n\n【参照ドキュメント】\n"
-        for i, citation in enumerate(search_result.citations, 1):
-            source_text += f"{i}. {citation.title}\n   URL: {citation.url}\n"
+        # Step 2: 検索結果からソーステキストを構築
+        source_parts = ["【検索結果】"]
+        for i, doc in enumerate(search_result.results, 1):
+            source_parts.append(f"\n[Document {i}] {doc.title}")
+            if doc.content:
+                source_parts.append(f"内容: {doc.content}")
+            if doc.url:
+                source_parts.append(f"URL: {doc.url}")
+        source_text = "\n".join(source_parts)
 
-        # Step 2: スライド生成
+        # Step 3: スライド生成
         generator = _get_content_generator()
         slide_markdown = generator.generate_slide_markdown(source_text)
 
@@ -222,11 +239,11 @@ async def _generate_diagram(arguments: dict) -> list[TextContent]:
     chart_type = arguments.get("chart_type", "flowchart")
 
     try:
-        # Step 1: 検索を実行
+        # Step 1: 検索を実行（20件取得）
         search_service = _get_search_service()
-        search_result = search_service.search_and_answer(query)
+        search_result = search_service.search_documents(query)
 
-        if not search_result.summary:
+        if not search_result.results:
             return [
                 TextContent(
                     type="text",
@@ -234,11 +251,16 @@ async def _generate_diagram(arguments: dict) -> list[TextContent]:
                 )
             ]
 
-        # Step 2: 図解生成
+        # Step 2: 検索結果からソーステキストを構築
+        source_parts = []
+        for doc in search_result.results:
+            if doc.content:
+                source_parts.append(doc.content)
+        source_text = "\n\n".join(source_parts)
+
+        # Step 3: 図解生成
         generator = _get_content_generator()
-        mermaid_code = generator.generate_infographic_code(
-            search_result.summary, chart_type
-        )
+        mermaid_code = generator.generate_infographic_code(source_text, chart_type)
 
         return [TextContent(type="text", text=mermaid_code)]
 

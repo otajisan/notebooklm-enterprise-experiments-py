@@ -222,3 +222,67 @@ class ContentGenerator:
             ]
         )
         return instructions + "\n" + source_text + output_format
+
+    def generate_answer_from_context(
+        self, query: str, search_results: list[dict]
+    ) -> str:
+        """検索結果を元にユーザーの質問に対する回答を生成する。
+
+        Args:
+            query: ユーザーの質問
+            search_results: 検索結果リスト（各要素は title, content, url を含む辞書）
+
+        Returns:
+            生成された回答テキスト
+        """
+        prompt = self._build_answer_prompt(query, search_results)
+        response = self.model.generate_content(prompt)
+        return response.text
+
+    def _build_answer_prompt(self, query: str, search_results: list[dict]) -> str:
+        """回答生成用のプロンプトを構築する。
+
+        Args:
+            query: ユーザーの質問
+            search_results: 検索結果リスト
+
+        Returns:
+            プロンプト文字列
+        """
+        # コンテキストを構築
+        context_parts: list[str] = []
+        for i, result in enumerate(search_results, 1):
+            title = result.get("title", "無題")
+            content = result.get("content", "")
+            url = result.get("url", "")
+
+            if content:
+                context_parts.append(f"[Document {i}] {title}")
+                context_parts.append(f"URL: {url}")
+                context_parts.append(f"内容:\n{content}")
+                context_parts.append("")
+
+        context = "\n".join(context_parts)
+
+        instructions = "\n".join(
+            [
+                "あなたは社内ドキュメントのアシスタントです。",
+                "以下の検索結果（Context）のみに基づいて、質問（Question）に答えてください。",
+                "",
+                "【重要な指示】",
+                "- 検索結果に含まれる情報のみを使用してください。",
+                "- 日付指定がある場合は、その日付の情報を優先してください。",
+                "- 回答は具体的かつ網羅的にしてください。",
+                "- 情報が見つからない場合は、その旨を正直に伝えてください。",
+                "- 回答の最後に、参照したドキュメントのタイトルとURLを記載。",
+                "",
+                "【Context】",
+                context,
+                "",
+                "【Question】",
+                query,
+                "",
+                "【Answer】",
+            ]
+        )
+        return instructions

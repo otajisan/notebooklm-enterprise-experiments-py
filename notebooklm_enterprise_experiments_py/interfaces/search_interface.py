@@ -1,7 +1,7 @@
 """検索サービスのインターフェース定義。"""
 
 from abc import ABC, abstractmethod
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 
 
 @dataclass(frozen=True)
@@ -23,6 +23,32 @@ class SearchResult:
 
     summary: str
     citations: list[SearchCitation]
+
+
+@dataclass(frozen=True)
+class DocumentResult:
+    """検索ドキュメントの詳細情報を表すデータクラス。
+
+    Attributes:
+        title: ドキュメントのタイトル
+        content: ドキュメントの内容（スニペットまたは抽出テキスト）
+        url: ドキュメントのURL
+    """
+
+    title: str
+    content: str
+    url: str
+
+
+@dataclass(frozen=True)
+class DocumentSearchResult:
+    """ドキュメント検索結果を表すデータクラス。
+
+    Attributes:
+        results: 検索結果のドキュメントリスト
+    """
+
+    results: list[DocumentResult] = field(default_factory=list)
 
 
 class ISearchService(ABC):

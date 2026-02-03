@@ -29,6 +29,10 @@ from notebooklm_enterprise_experiments_py.infrastructure.config.env_config impor
     get_engine_id,
     get_gcp_location,
     get_gcp_project_id,
+    get_gemini_model,
+)
+from notebooklm_enterprise_experiments_py.infrastructure.external.content_generator import (  # noqa: E402, E501
+    ContentGenerator,
 )
 from notebooklm_enterprise_experiments_py.infrastructure.external.vertex_ai_search_service import (  # noqa: E402, E501
     VertexAISearchService,
@@ -82,22 +86,60 @@ def main() -> None:
     print()
 
     try:
-        result = service.search_and_answer(query)
+        # Step 1: 検索を実行（20件取得）
+        print("Step 1: ドキュメント検索")
+        print("-" * 40)
+        search_result = service.search_documents(query)
 
-        # AIの回答を表示
-        print("【AIの回答】")
-        print(result.summary if result.summary else "(回答なし)")
+        if not search_result.results:
+            print("検索結果が見つかりませんでした。")
+            sys.exit(1)
+
+        print(f"検索結果: {len(search_result.results)}件のドキュメントを取得")
         print()
 
-        # 引用元を表示
+        # 参照ドキュメントを表示
         print("【参照ドキュメント】")
-        if result.citations:
-            for i, citation in enumerate(result.citations, 1):
-                print(f"  {i}. {citation.title}")
-                print(f"     URL: {citation.url}")
-                print()
-        else:
-            print("  (参照ドキュメントなし)")
+        for i, doc in enumerate(search_result.results[:10], 1):
+            print(f"  {i}. {doc.title}")
+            if doc.url:
+                print(f"     URL: {doc.url}")
+            if doc.content:
+                content_preview = doc.content[:200]
+                if len(doc.content) > 200:
+                    content_preview += "..."
+                print(f"     内容: {content_preview}")
+            print()
+
+        # Step 2: Geminiで回答を生成
+        print("Step 2: 回答生成（Gemini）")
+        print("-" * 40)
+
+        model_name = get_gemini_model()
+        print(f"使用モデル: {model_name}")
+
+        generator = ContentGenerator(
+            project_id=project_id,
+            location="us-central1",
+            model_name=model_name,
+        )
+
+        # 検索結果を辞書リストに変換
+        search_results_dict = [
+            {
+                "title": doc.title,
+                "content": doc.content,
+                "url": doc.url,
+            }
+            for doc in search_result.results
+        ]
+
+        answer = generator.generate_answer_from_context(query, search_results_dict)
+
+        # AIの回答を表示
+        print()
+        print("【AIの回答】")
+        print(answer if answer else "(回答なし)")
         print()
 
         print("=" * 60)
@@ -105,7 +147,7 @@ def main() -> None:
         print("=" * 60)
 
     except Exception as e:
-        print(f"検索エラー: {e}")
+        print(f"エラー: {e}")
         import traceback
 
         traceback.print_exc()

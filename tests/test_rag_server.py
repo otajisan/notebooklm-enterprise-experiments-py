@@ -11,8 +11,8 @@ project_root = Path(__file__).parent.parent
 sys.path.insert(0, str(project_root))
 
 from notebooklm_enterprise_experiments_py.interfaces.search_interface import (  # noqa: E402
-    SearchCitation,
-    SearchResult,
+    DocumentResult,
+    DocumentSearchResult,
 )
 from servers import rag_server  # noqa: E402
 
@@ -54,22 +54,32 @@ class TestSearchDocuments:
     @pytest.mark.asyncio
     async def test_search_documents_returns_result(self) -> None:
         """検索結果を返す。"""
-        mock_result = SearchResult(
-            summary="テスト要約",
-            citations=[
-                SearchCitation(title="ドキュメント1", url="https://example.com/doc1"),
-            ],
+        mock_result = DocumentSearchResult(
+            results=[
+                DocumentResult(
+                    title="ドキュメント1",
+                    content="テスト内容",
+                    url="https://example.com/doc1",
+                ),
+            ]
         )
 
-        with patch.object(rag_server, "_get_search_service") as mock_get_service:
+        with (
+            patch.object(rag_server, "_get_search_service") as mock_get_service,
+            patch.object(rag_server, "_get_content_generator") as mock_get_generator,
+        ):
             mock_service = MagicMock()
-            mock_service.search_and_answer.return_value = mock_result
+            mock_service.search_documents.return_value = mock_result
             mock_get_service.return_value = mock_service
+
+            mock_generator = MagicMock()
+            mock_generator.generate_answer_from_context.return_value = "テスト回答"
+            mock_get_generator.return_value = mock_generator
 
             result = await rag_server._search_documents({"query": "テストクエリ"})
 
             assert len(result) == 1
-            assert "テスト要約" in result[0].text
+            assert "テスト回答" in result[0].text
             assert "ドキュメント1" in result[0].text
 
     @pytest.mark.asyncio
@@ -95,9 +105,14 @@ class TestGenerateSlideDraft:
     @pytest.mark.asyncio
     async def test_generate_slide_draft_returns_markdown(self) -> None:
         """スライドMarkdownを返す。"""
-        mock_search_result = SearchResult(
-            summary="テスト要約",
-            citations=[SearchCitation(title="ドキュメント", url="https://example.com")],
+        mock_search_result = DocumentSearchResult(
+            results=[
+                DocumentResult(
+                    title="ドキュメント",
+                    content="テスト内容",
+                    url="https://example.com",
+                ),
+            ]
         )
 
         with (
@@ -105,7 +120,7 @@ class TestGenerateSlideDraft:
             patch.object(rag_server, "_get_content_generator") as mock_get_generator,
         ):
             mock_search = MagicMock()
-            mock_search.search_and_answer.return_value = mock_search_result
+            mock_search.search_documents.return_value = mock_search_result
             mock_get_search.return_value = mock_search
 
             mock_generator = MagicMock()
@@ -129,11 +144,11 @@ marp: true
     @pytest.mark.asyncio
     async def test_generate_slide_draft_no_search_result(self) -> None:
         """検索結果がない場合はスキップメッセージを返す。"""
-        mock_search_result = SearchResult(summary="", citations=[])
+        mock_search_result = DocumentSearchResult(results=[])
 
         with patch.object(rag_server, "_get_search_service") as mock_get_search:
             mock_search = MagicMock()
-            mock_search.search_and_answer.return_value = mock_search_result
+            mock_search.search_documents.return_value = mock_search_result
             mock_get_search.return_value = mock_search
 
             result = await rag_server._generate_slide_draft({"query": "テスト"})
@@ -147,9 +162,14 @@ class TestGenerateDiagram:
     @pytest.mark.asyncio
     async def test_generate_diagram_returns_mermaid(self) -> None:
         """Mermaidコードを返す。"""
-        mock_search_result = SearchResult(
-            summary="テスト要約",
-            citations=[],
+        mock_search_result = DocumentSearchResult(
+            results=[
+                DocumentResult(
+                    title="ドキュメント",
+                    content="テスト内容",
+                    url="https://example.com",
+                ),
+            ]
         )
 
         with (
@@ -157,7 +177,7 @@ class TestGenerateDiagram:
             patch.object(rag_server, "_get_content_generator") as mock_get_generator,
         ):
             mock_search = MagicMock()
-            mock_search.search_and_answer.return_value = mock_search_result
+            mock_search.search_documents.return_value = mock_search_result
             mock_get_search.return_value = mock_search
 
             mock_generator = MagicMock()
@@ -175,14 +195,22 @@ flowchart TD
     @pytest.mark.asyncio
     async def test_generate_diagram_with_chart_type(self) -> None:
         """chart_typeパラメータが渡される。"""
-        mock_search_result = SearchResult(summary="テスト要約", citations=[])
+        mock_search_result = DocumentSearchResult(
+            results=[
+                DocumentResult(
+                    title="ドキュメント",
+                    content="テスト内容",
+                    url="https://example.com",
+                ),
+            ]
+        )
 
         with (
             patch.object(rag_server, "_get_search_service") as mock_get_search,
             patch.object(rag_server, "_get_content_generator") as mock_get_generator,
         ):
             mock_search = MagicMock()
-            mock_search.search_and_answer.return_value = mock_search_result
+            mock_search.search_documents.return_value = mock_search_result
             mock_get_search.return_value = mock_search
 
             mock_generator = MagicMock()
@@ -194,7 +222,7 @@ flowchart TD
             )
 
             mock_generator.generate_infographic_code.assert_called_once_with(
-                "テスト要約", "sequence"
+                "テスト内容", "sequence"
             )
 
     @pytest.mark.asyncio
@@ -206,11 +234,11 @@ flowchart TD
     @pytest.mark.asyncio
     async def test_generate_diagram_no_search_result(self) -> None:
         """検索結果がない場合はスキップメッセージを返す。"""
-        mock_search_result = SearchResult(summary="", citations=[])
+        mock_search_result = DocumentSearchResult(results=[])
 
         with patch.object(rag_server, "_get_search_service") as mock_get_search:
             mock_search = MagicMock()
-            mock_search.search_and_answer.return_value = mock_search_result
+            mock_search.search_documents.return_value = mock_search_result
             mock_get_search.return_value = mock_search
 
             result = await rag_server._generate_diagram({"query": "テスト"})
