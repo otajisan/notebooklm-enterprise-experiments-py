@@ -216,9 +216,7 @@ class TestVertexAISearchService:
 
         service.search_client.search.return_value = mock_response
 
-        filter_str = (
-            'structData.date >= "2026-01-26" AND structData.date <= "2026-01-30"'
-        )
+        filter_str = 'date >= "2026-01-26" AND date <= "2026-01-30"'
         service.search_documents("議事録", filter_str=filter_str)
 
         # searchが呼ばれたリクエストを確認
@@ -235,7 +233,7 @@ class TestVertexAISearchService:
 
         service.search_client.search.return_value = mock_response
 
-        order_by = "structData.date desc"
+        order_by = "date desc"
         service.search_documents("朝会", order_by=order_by)
 
         # searchが呼ばれたリクエストを確認
@@ -252,8 +250,8 @@ class TestVertexAISearchService:
 
         service.search_client.search.return_value = mock_response
 
-        filter_str = 'structData.date >= "2026-01-01"'
-        order_by = "structData.date desc"
+        filter_str = 'date >= "2026-01-01"'
+        order_by = "date desc"
         service.search_documents("議事録", filter_str=filter_str, order_by=order_by)
 
         # searchが呼ばれたリクエストを確認

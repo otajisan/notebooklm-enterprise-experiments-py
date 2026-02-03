@@ -109,9 +109,7 @@ class TestSearchDocuments:
             mock_get_service.return_value = mock_service
 
             mock_generator = MagicMock()
-            filter_val = (
-                'structData.date >= "2026-01-26" AND structData.date <= "2026-01-30"'
-            )
+            filter_val = 'date >= "2026-01-26" AND date <= "2026-01-30"'
             mock_generator.generate_search_params.return_value = {
                 "query": "議事録",
                 "filter": filter_val,
