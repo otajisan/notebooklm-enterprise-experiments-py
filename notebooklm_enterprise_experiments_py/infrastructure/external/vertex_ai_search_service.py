@@ -239,41 +239,62 @@ class VertexAISearchService(ISearchService):
 
             # デバッグログ: レスポンス構造を確認
             print(f"\n[DEBUG] Result Keys: {list(data.keys())}")
-            if "snippets" in data and data["snippets"]:
-                print(f"[DEBUG] Snippet[0]: {data['snippets'][0]}")
-            if "extractive_segments" in data and data["extractive_segments"]:
-                print(f"[DEBUG] Segment[0]: {data['extractive_segments'][0]}")
-            if "extractive_answers" in data and data["extractive_answers"]:
-                print(f"[DEBUG] Answer[0]: {data['extractive_answers'][0]}")
 
             title = str(data.get("title", "無題"))
             url = str(data.get("link", ""))
 
-            # コンテンツの取得
+            # --- ロバストなテキスト抽出ロジック ---
+            # 抽出対象のリスト候補をすべて収集
+            sources: list[Any] = []
+            if "extractive_segments" in data:
+                sources.extend(data["extractive_segments"])
+            if "extractive_answers" in data:
+                sources.extend(data["extractive_answers"])
+            if "snippets" in data:
+                sources.extend(data["snippets"])
+
             content_parts: list[str] = []
 
-            # 1. Extractive Segments/Answers (最優先: 長文の抽出)
-            # APIバージョンによってキーが異なる場合があるため両方チェック
-            segments = data.get("extractive_segments") or data.get("extractive_answers")
-            if segments:
-                for seg in segments:
-                    text = seg.get("content", "") if isinstance(seg, dict) else ""
-                    if text:
-                        content_parts.append(f"[Segment] {text}")
+            for source_obj in sources:
+                # 1. まずは一般的なキー名をチェック
+                found_text = None
+                if hasattr(source_obj, "get"):
+                    found_text = (
+                        source_obj.get("content")
+                        or source_obj.get("snippet")
+                        or source_obj.get("htmlSnippet")
+                        or source_obj.get("text")
+                    )
 
-            # 2. Snippets (フォールバック: 短い要約)
-            snippets = data.get("snippets", [])
-            if snippets:
-                for snip in snippets:
-                    text = snip.get("snippet", "") if isinstance(snip, dict) else ""
-                    if text:
-                        content_parts.append(f"[Snippet] {text}")
+                # 2. 見つからなければ、値の中から「最も長い文字列」を探す
+                if not found_text:
+                    longest_str = ""
+                    try:
+                        for val in dict(source_obj).values():
+                            if isinstance(val, str) and len(val) > len(longest_str):
+                                longest_str = val
+                        if len(longest_str) > 10:  # 短いノイズは除外
+                            found_text = longest_str
+                    except (TypeError, ValueError):
+                        pass
 
-            # 3. コンテンツを結合
+                if found_text:
+                    # HTMLタグ除去（簡易的）
+                    clean_text = (
+                        found_text.replace("<b>", "")
+                        .replace("</b>", "")
+                        .replace("\n", " ")
+                    )
+                    content_parts.append(clean_text)
+
+            # コンテンツを結合
             full_content = "\n\n".join(content_parts)
 
-            # デバッグログ: 何文字取れたか確認する
-            print(f"[DEBUG] Title: {title} | Content Len: {len(full_content)}")
+            # デバッグログ
+            content_len = len(full_content)
+            print(f"[DEBUG] {title} | Sources:{len(sources)} | Len:{content_len}")
+            if sources and not full_content:
+                print(f"[DEBUG] Failed: {dict(sources[0])}")
 
             # コンテンツが空の場合はフォールバック
             if not full_content:
