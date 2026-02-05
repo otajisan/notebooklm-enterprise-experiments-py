@@ -4,7 +4,7 @@ import os
 from unittest.mock import patch
 
 from notebooklm_enterprise_experiments_py import __version__
-from notebooklm_enterprise_experiments_py.infrastructure.config import env_config
+from notebooklm_enterprise_experiments_py.config import env_config
 
 
 def test_version():

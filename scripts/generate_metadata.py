@@ -35,7 +35,7 @@ sys.path.insert(0, str(project_root))
 from google.cloud import storage  # noqa: E402
 from google.oauth2 import service_account  # noqa: E402
 
-from notebooklm_enterprise_experiments_py.infrastructure.config.env_config import (  # noqa: E402
+from notebooklm_enterprise_experiments_py.config.env_config import (  # noqa: E402
     get_gcp_project_id,
     get_gcs_bucket_name,
     get_service_account_key_info,

@@ -1,6 +1,6 @@
 """検索インターフェースのテスト。"""
 
-from notebooklm_enterprise_experiments_py.interfaces.search_interface import (
+from notebooklm_enterprise_experiments_py.models.search import (
     ISearchService,
     SearchCitation,
     SearchResult,

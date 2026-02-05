@@ -1,4 +1,4 @@
-"""検索サービスのインターフェース定義。"""
+"""検索サービスのデータモデルとインターフェース定義。"""
 
 from abc import ABC, abstractmethod
 from dataclasses import dataclass, field

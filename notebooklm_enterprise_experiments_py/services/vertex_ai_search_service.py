@@ -8,11 +8,11 @@ from google.api_core.client_options import ClientOptions
 from google.cloud import discoveryengine_v1alpha as discoveryengine
 from google.oauth2 import service_account
 
-from notebooklm_enterprise_experiments_py.infrastructure.config.env_config import (
+from notebooklm_enterprise_experiments_py.config.env_config import (
     get_service_account_key_info,
     get_service_account_key_path,
 )
-from notebooklm_enterprise_experiments_py.interfaces.search_interface import (
+from notebooklm_enterprise_experiments_py.models.search import (
     DocumentResult,
     DocumentSearchResult,
     ISearchService,

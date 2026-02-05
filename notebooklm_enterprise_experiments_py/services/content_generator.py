@@ -8,7 +8,7 @@ import vertexai
 from google.oauth2 import service_account
 from vertexai.generative_models import GenerativeModel
 
-from notebooklm_enterprise_experiments_py.infrastructure.config.env_config import (
+from notebooklm_enterprise_experiments_py.config.env_config import (
     get_service_account_key_info,
     get_service_account_key_path,
 )

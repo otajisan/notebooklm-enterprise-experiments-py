@@ -1,39 +1,87 @@
 # NotebookLM Enterprise Experiments Python
 
-このプロジェクトは**ドメイン駆動設計（DDD: Domain-Driven Design）**の原則に基づいて構成されています。
+社内ドキュメント検索とコンテンツ生成を行うMCPサーバーです。Vertex AI SearchとGeminiを組み合わせたRAG（Retrieval-Augmented Generation）システムを提供します。
+
+## システム構成図
+
+```mermaid
+flowchart TB
+    subgraph Client["クライアント"]
+        CD[Claude Desktop]
+        Cursor[Cursor IDE]
+    end
+
+    subgraph MCP["MCP Server (Local Python Process)"]
+        RAG[rag_server.py]
+        subgraph Services["サービス層"]
+            CG[ContentGenerator]
+            VAS[VertexAISearchService]
+        end
+    end
+
+    subgraph GCP["Google Cloud Platform"]
+        subgraph VAIS["Vertex AI Search"]
+            DS[Data Store]
+            SE[Search Engine]
+        end
+        subgraph Storage["Cloud Storage"]
+            GCS[(GCS Bucket<br/>PDF/Docs)]
+        end
+        subgraph GenAI["Vertex AI"]
+            Gemini[Gemini 2.5 Flash]
+        end
+    end
+
+    CD <-->|MCP Protocol| RAG
+    Cursor <-->|MCP Protocol| RAG
+    RAG --> CG
+    RAG --> VAS
+    CG -->|生成リクエスト| Gemini
+    VAS -->|検索リクエスト| SE
+    SE --> DS
+    DS <--> GCS
+    Gemini -->|回答生成| CG
+```
 
 ## プロジェクト構造
 
 ```
 .
-├── scripts/                 # 検証・ユーティリティスクリプト
+├── servers/                 # MCPサーバー
+│   └── rag_server.py        # メインのMCPサーバー実装
+├── scripts/                 # ユーティリティスクリプト
 │   ├── verify_qa.py         # Vertex AI Search 動作検証
 │   ├── generate_slides.py   # スライド構成案（Marp Markdown）生成
-│   └── generate_infographic.py  # 図解（Mermaid.js）生成
+│   ├── generate_infographic.py  # 図解（Mermaid.js）生成
+│   └── generate_metadata.py # GCSメタデータ生成
 ├── tests/                   # テストコード
+├── docs/                    # ドキュメント
+│   └── ARCHITECTURE.md      # 詳細なアーキテクチャ説明
 └── notebooklm_enterprise_experiments_py/
-    ├── domain/              # ドメインレイヤー
-    │   ├── entities/        # エンティティ（一意の識別子を持つドメインオブジェクト）
-    │   ├── value_objects/   # 値オブジェクト（識別子を持たない不変のドメインオブジェクト）
-    │   ├── repositories/    # リポジトリインターフェース（永続化の抽象化）
-    │   └── services/        # ドメインサービス（エンティティに属さないドメインロジック）
-    ├── application/         # アプリケーションレイヤー
-    │   ├── services/        # アプリケーションサービス（ユースケースの実装）
-    │   └── dto/             # データ転送オブジェクト（レイヤー間のデータ転送）
-    ├── infrastructure/      # インフラストラクチャレイヤー
-    │   ├── config/          # 設定管理（環境変数など）
-    │   ├── repositories/    # リポジトリ実装（ドメインリポジトリの具体的な実装）
-    │   └── external/        # 外部サービス連携（GCPなど）
-    └── interfaces/          # インターフェースレイヤー
-        └── search_interface.py  # 検索サービスインターフェース
+    ├── config/              # 設定管理（環境変数など）
+    │   └── env_config.py
+    ├── services/            # サービス層
+    │   ├── content_generator.py      # Geminiコンテンツ生成
+    │   └── vertex_ai_search_service.py  # Vertex AI Search
+    └── models/              # データモデル
+        └── search.py        # 検索関連のデータクラス
 ```
 
-### レイヤーの責務
+## MCPサーバー
 
-- **Domain（ドメイン）**: ビジネスロジックとドメインモデル。他のレイヤーに依存しない。
-- **Application（アプリケーション）**: ユースケースの実装。ドメインレイヤーに依存する。
-- **Infrastructure（インフラストラクチャ）**: 技術的な実装（データベース、外部API、設定など）。ドメインとアプリケーションに依存する。
-- **Interfaces（インターフェース）**: 外部との接点（API、CLI、UIなど）。他のすべてのレイヤーに依存する。
+### 提供するツール
+
+| ツール名 | 説明 |
+|---------|------|
+| `search_documents` | 社内ドキュメントを検索し、Geminiで回答を生成 |
+| `generate_slide_draft` | 検索結果を元にMarp形式のスライド構成を生成 |
+| `generate_diagram` | 検索結果を元にMermaid形式の図解を生成 |
+
+### 起動方法
+
+```bash
+uv run python servers/rag_server.py
+```
 
 ## セットアップ
 
@@ -48,17 +96,30 @@
 
 2. `.env`ファイルを編集して、実際の値を設定してください：
    ```env
-   GCP_PROJECT_ID=your-actual-project-id
+   # 必須
+   GCP_PROJECT_ID=your-project-id
+   ENGINE_ID=your-engine-id
+
+   # オプション（デフォルト: global）
+   LOCATION=global
+
+   # Geminiモデル（デフォルト: gemini-2.5-flash）
+   GEMINI_MODEL=gemini-2.5-flash
+
+   # 認証情報（いずれかを設定）
+   GCP_SERVICE_ACCOUNT_KEY_PATH=credentials/service-account.json
+   # または
+   GCP_SERVICE_ACCOUNT_KEY_JSON={"type": "service_account", ...}
    ```
 
 3. `.env`ファイルは自動的に`.gitignore`に含まれているため、Gitにコミットされることはありません。
 
 ### 環境変数の使用方法
 
-コード内で環境変数を使用する場合は、`notebooklm_enterprise_experiments_py.infrastructure.config`モジュールを使用してください：
+コード内で環境変数を使用する場合は、`notebooklm_enterprise_experiments_py.config`モジュールを使用してください：
 
 ```python
-from notebooklm_enterprise_experiments_py.infrastructure.config import (
+from notebooklm_enterprise_experiments_py.config import (
     get_gcp_project_id,
     get_gcp_region,
 )
@@ -82,52 +143,6 @@ region = get_gcp_region()
 
 ### Vertex AI Search 動作検証スクリプト
 
-`scripts/verify_qa.py` は、Vertex AI Search (Discovery Engine) の動作を検証するスクリプトです。
-
-#### 前提条件
-
-1. GCPコンソールで検索アプリ（Engine）とデータストアがセットアップ済みであること
-2. サービスアカウントキーが設定されていること
-
-#### 環境変数の設定
-
-`.env` ファイルに以下の環境変数を設定してください：
-
-```env
-# 必須
-GCP_PROJECT_ID=your-project-id
-ENGINE_ID=your-engine-id
-
-# オプション（デフォルト: global）
-LOCATION=global
-
-# Geminiモデル（デフォルト: gemini-2.5-flash）
-GEMINI_MODEL=gemini-2.5-flash
-
-# 認証情報（いずれかを設定）
-GCP_SERVICE_ACCOUNT_KEY_PATH=credentials/service-account.json
-# または
-GCP_SERVICE_ACCOUNT_KEY_JSON={"type": "service_account", ...}
-```
-
-#### 実行方法
-
-```bash
-# 1. uv 環境の有効化（初回のみ依存関係をインストール）
-uv sync
-
-# 2. 仮想環境を有効化
-source .venv/bin/activate
-
-# 3. スクリプトを実行（デフォルトの質問）
-python scripts/verify_qa.py
-
-# 4. カスタムの質問で実行
-python scripts/verify_qa.py "質問内容をここに記述"
-```
-
-または、`uv run` を使用して直接実行することもできます：
-
 ```bash
 # デフォルトの質問で実行
 uv run python scripts/verify_qa.py
@@ -136,46 +151,7 @@ uv run python scripts/verify_qa.py
 uv run python scripts/verify_qa.py "ドキュメントに関する具体的な質問"
 ```
 
-#### 出力例
-
-```
-============================================================
-Vertex AI Search (Discovery Engine) 動作検証
-============================================================
-
-プロジェクトID: your-project-id
-Engine ID: your-engine-id
-ロケーション: global
-
-VertexAISearchService を初期化中...
-初期化完了
-
-質問: このデータストアにあるドキュメントの概要を教えてください
-------------------------------------------------------------
-
-【AIの回答】
-（AIによって生成された回答が表示されます）
-
-【参照ドキュメント】
-  1. ドキュメントタイトル
-     URL: https://drive.google.com/...
-
-============================================================
-検証完了
-============================================================
-```
-
 ### スライド生成スクリプト
-
-`scripts/generate_slides.py` は、検索結果を元にプレゼンテーション用のスライド構成を生成するスクリプトです。
-
-#### 機能
-
-- Vertex AI Searchで関連ドキュメントを検索
-- Gemini Proを使用してMarp互換のMarkdown形式でスライド構成を生成
-- 5〜8枚程度のスライドに自動でまとめる
-
-#### 実行方法
 
 ```bash
 # 基本的な使い方
@@ -188,50 +164,7 @@ uv run python scripts/generate_slides.py "検索クエリ" --output my_slides.md
 uv run python scripts/generate_slides.py "検索クエリ" --model gemini-2.5-pro
 ```
 
-#### コマンドラインオプション
-
-| オプション | 説明 | デフォルト |
-|-----------|------|-----------|
-| `query` | 検索クエリ（必須） | - |
-| `--output`, `-o` | 出力ファイル名 | `output_slides.md` |
-| `--model`, `-m` | 使用するGeminiモデル | 環境変数または `gemini-2.5-flash` |
-
-#### 出力例
-
-```markdown
----
-marp: true
-theme: default
-paginate: true
----
-
-# セキュリティ研修資料
-
-概要テキスト
-
----
-
-## セクション1
-
-- ポイント1
-- ポイント2
-
----
-```
-
-生成されたMarkdownファイルは、VS Code + Marp拡張機能でプレビュー・PDF出力できます。
-
 ### 図解生成スクリプト
-
-`scripts/generate_infographic.py` は、検索結果を元にMermaid.js形式の図解を生成するスクリプトです。
-
-#### 機能
-
-- Vertex AI Searchで関連ドキュメントを検索
-- Gemini Proを使用してMermaid.js形式の図解コードを生成
-- フローチャート、シーケンス図、マインドマップなど複数の図形式をサポート
-
-#### 実行方法
 
 ```bash
 # フローチャートを生成（デフォルト）
@@ -242,19 +175,7 @@ uv run python scripts/generate_infographic.py "APIの呼び出し順序を図解
 
 # マインドマップを生成
 uv run python scripts/generate_infographic.py "プロジェクトの構成を図解して" --type mindmap
-
-# 出力ファイル名を指定
-uv run python scripts/generate_infographic.py "検索クエリ" --output my_diagram.md
 ```
-
-#### コマンドラインオプション
-
-| オプション | 説明 | デフォルト |
-|-----------|------|-----------|
-| `query` | 検索クエリ（必須） | - |
-| `--type`, `-t` | 図の種類 | `flowchart` |
-| `--output`, `-o` | 出力ファイル名 | `output_diagram.md` |
-| `--model`, `-m` | 使用するGeminiモデル | 環境変数または `gemini-2.5-flash` |
 
 #### サポートする図の種類
 
@@ -268,31 +189,67 @@ uv run python scripts/generate_infographic.py "検索クエリ" --output my_diag
 | `erDiagram` | ER図 |
 | `gantt` | ガントチャート |
 
-#### 出力例
+## 処理シーケンス図
 
-```markdown
+「ユーザーが『直近の朝会のサマリを教えて』と質問した際」の内部フロー：
+
 ```mermaid
-flowchart TD
-    A[申請開始] --> B[申請書作成]
-    B --> C{金額確認}
-    C -->|10万円未満| D[課長承認]
-    C -->|10万円以上| E[部長承認]
-    D --> F[経理確認]
-    E --> F
-    F --> G[完了]
-```
-```
+sequenceDiagram
+    autonumber
+    participant User as User<br/>(Claude Desktop)
+    participant MCP as MCP Server<br/>(rag_server.py)
+    participant CG as ContentGenerator
+    participant Gemini as Gemini 2.5 Flash
+    participant VAS as VertexAISearchService
+    participant VAIS as Vertex AI Search
 
-生成されたMermaidコードは以下の方法でプレビューできます：
-- VS Code + Mermaid拡張機能
-- GitHub/GitLabのMarkdownプレビュー
-- [Mermaid Live Editor](https://mermaid.live/)
+    User->>MCP: 自然言語クエリ送信<br/>"直近の朝会のサマリを教えて"
+
+    Note over MCP: search_documents ツール呼び出し
+
+    MCP->>CG: generate_search_params(query)
+    CG->>Gemini: クエリ解析リクエスト
+    Gemini-->>CG: 検索パラメータ<br/>{query: "朝会", order_by: "date desc"}
+    CG-->>MCP: 検索パラメータ返却
+
+    MCP->>VAS: search_documents(query, order_by)
+    VAS->>VAIS: 検索実行<br/>(メタデータフィルタ/ソート付き)
+    VAIS-->>VAS: 検索結果<br/>(Extractive Segments/Snippets)
+    VAS-->>MCP: DocumentSearchResult
+
+    MCP->>CG: generate_answer_from_context(query, results)
+    CG->>Gemini: 検索結果をコンテキストとして回答生成を依頼
+    Gemini-->>CG: 回答テキスト生成
+    CG-->>MCP: 回答テキスト
+
+    MCP-->>User: 最終回答を表示<br/>(回答 + 参照ドキュメント一覧)
+```
 
 ## 開発ガイドライン
 
-### DDDの原則に従った開発
+### 設計方針
 
-1. **ドメインモデルを中心に設計する**: ビジネスロジックはドメインレイヤーに配置する
-2. **依存関係の方向を守る**: ドメイン → アプリケーション → インフラストラクチャ → インターフェースの順に依存する
-3. **リポジトリパターンを使用**: 永続化の詳細はインフラストラクチャレイヤーに隠蔽する
-4. **値オブジェクトとエンティティを適切に使い分ける**: 識別子が必要な場合はエンティティ、不要な場合は値オブジェクト
+- **Simple & Pragmatic**: 過剰な抽象化を避け、可読性の高いシンプルなコードを維持する
+- **Type Hinting**: Pythonの型ヒントを厳密に記述する
+- **Docstrings**: 各ツールやメソッドの入出力の説明を充実させる
+- **GCP Integration**: Vertex AI SDK の最新の仕様に準拠する
+
+### 開発コマンド
+
+```bash
+# Lintチェック
+uv run ruff check .
+
+# フォーマット
+uv run ruff format .
+
+# 型チェック
+uv run pyright
+
+# テスト実行
+uv run pytest
+```
+
+## アーキテクチャの詳細
+
+詳細なアーキテクチャ説明は [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) を参照してください。

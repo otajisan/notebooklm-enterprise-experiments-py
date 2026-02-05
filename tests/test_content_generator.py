@@ -4,7 +4,7 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
-from notebooklm_enterprise_experiments_py.infrastructure.external import (
+from notebooklm_enterprise_experiments_py.services import (
     content_generator,
 )
 

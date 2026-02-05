@@ -24,16 +24,16 @@ from mcp.server import Server  # noqa: E402
 from mcp.server.stdio import stdio_server  # noqa: E402
 from mcp.types import TextContent, Tool  # noqa: E402
 
-from notebooklm_enterprise_experiments_py.infrastructure.config.env_config import (  # noqa: E402
+from notebooklm_enterprise_experiments_py.config.env_config import (  # noqa: E402
     get_engine_id,
     get_gcp_location,
     get_gcp_project_id,
     get_gemini_model,
 )
-from notebooklm_enterprise_experiments_py.infrastructure.external.content_generator import (  # noqa: E402, E501
+from notebooklm_enterprise_experiments_py.services.content_generator import (  # noqa: E402
     ContentGenerator,
 )
-from notebooklm_enterprise_experiments_py.infrastructure.external.vertex_ai_search_service import (  # noqa: E402, E501
+from notebooklm_enterprise_experiments_py.services.vertex_ai_search_service import (  # noqa: E402
     VertexAISearchService,
 )
 
