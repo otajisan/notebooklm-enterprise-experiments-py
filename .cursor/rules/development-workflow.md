@@ -7,6 +7,39 @@ alwaysApply: true
 
 このプロジェクトでは、以下の開発ワークフローを厳守してください。
 
+## プロジェクトの性質
+
+このプロジェクトは **MCPサーバー + GCP AIサービスの統合アプリケーション** です。
+
+### 設計方針
+
+- **Simple & Pragmatic**: 過剰な抽象化を避け、可読性の高いシンプルなコードを維持する
+- **Type Hinting**: Pythonの型ヒントを厳密に記述する
+- **Docstrings**: 各ツールやメソッドの入出力（特にMCPツールとして公開する部分）の説明を充実させる
+- **GCP Integration**: Vertex AI SDK の最新の仕様に準拠する
+
+### ディレクトリ構造
+
+```
+.
+├── servers/                 # MCPサーバー
+│   └── rag_server.py        # メインのMCPサーバー実装
+├── scripts/                 # ユーティリティスクリプト
+│   ├── verify_qa.py         # Vertex AI Search 動作検証
+│   ├── generate_slides.py   # スライド構成案（Marp Markdown）生成
+│   ├── generate_infographic.py  # 図解（Mermaid.js）生成
+│   └── generate_metadata.py # GCSメタデータ生成
+├── tests/                   # テストコード
+└── notebooklm_enterprise_experiments_py/
+    ├── config/              # 設定管理（環境変数など）
+    │   └── env_config.py
+    ├── services/            # サービス層
+    │   ├── content_generator.py      # Geminiコンテンツ生成
+    │   └── vertex_ai_search_service.py  # Vertex AI Search
+    └── models/              # データモデル
+        └── search.py        # 検索関連のデータクラス
+```
+
 ## コード開発時の必須事項
 
 ### 1. テストの同時開発

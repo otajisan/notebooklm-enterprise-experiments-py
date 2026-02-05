@@ -7,8 +7,8 @@ from pathlib import Path
 from dotenv import load_dotenv
 
 # プロジェクトルートディレクトリを取得
-# (infrastructure/config/から3階層上がプロジェクトルート)
-PROJECT_ROOT = Path(__file__).parent.parent.parent.parent
+# (config/から2階層上がプロジェクトルート)
+PROJECT_ROOT = Path(__file__).parent.parent.parent
 
 # .envファイルを読み込む
 load_dotenv(PROJECT_ROOT / ".env")

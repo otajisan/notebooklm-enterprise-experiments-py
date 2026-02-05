@@ -10,7 +10,7 @@ import pytest
 project_root = Path(__file__).parent.parent
 sys.path.insert(0, str(project_root))
 
-from notebooklm_enterprise_experiments_py.interfaces.search_interface import (  # noqa: E402
+from notebooklm_enterprise_experiments_py.models.search import (  # noqa: E402
     DocumentResult,
     DocumentSearchResult,
 )

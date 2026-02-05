@@ -6,7 +6,7 @@ from unittest.mock import patch
 
 import pytest
 
-from notebooklm_enterprise_experiments_py.infrastructure.config import env_config
+from notebooklm_enterprise_experiments_py.config import env_config
 
 
 class TestServiceAccountKey:

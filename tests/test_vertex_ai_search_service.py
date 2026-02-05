@@ -4,12 +4,12 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
-from notebooklm_enterprise_experiments_py.infrastructure.external import (
-    vertex_ai_search_service,
-)
-from notebooklm_enterprise_experiments_py.interfaces.search_interface import (
+from notebooklm_enterprise_experiments_py.models.search import (
     DocumentSearchResult,
     SearchResult,
+)
+from notebooklm_enterprise_experiments_py.services import (
+    vertex_ai_search_service,
 )
 
 VertexAISearchService = vertex_ai_search_service.VertexAISearchService
@@ -27,7 +27,7 @@ class TestVertexAISearchService:
     def service(self, mock_credentials: MagicMock) -> VertexAISearchService:
         """テスト用のサービスインスタンスを作成する。"""
         with patch(
-            "notebooklm_enterprise_experiments_py.infrastructure.external."
+            "notebooklm_enterprise_experiments_py.services."
             "vertex_ai_search_service.discoveryengine.SearchServiceClient"
         ):
             return VertexAISearchService(
@@ -40,7 +40,7 @@ class TestVertexAISearchService:
     def test_init_with_credentials(self, mock_credentials: MagicMock) -> None:
         """認証情報を指定して初期化できる。"""
         with patch(
-            "notebooklm_enterprise_experiments_py.infrastructure.external."
+            "notebooklm_enterprise_experiments_py.services."
             "vertex_ai_search_service.discoveryengine.SearchServiceClient"
         ) as mock_client:
             service = VertexAISearchService(
@@ -60,7 +60,7 @@ class TestVertexAISearchService:
     def test_init_with_non_global_location(self, mock_credentials: MagicMock) -> None:
         """global以外のlocationでは適切なエンドポイントが設定される。"""
         with patch(
-            "notebooklm_enterprise_experiments_py.infrastructure.external."
+            "notebooklm_enterprise_experiments_py.services."
             "vertex_ai_search_service.discoveryengine.SearchServiceClient"
         ) as mock_client:
             VertexAISearchService(
@@ -78,7 +78,7 @@ class TestVertexAISearchService:
     ) -> None:
         """serving_configは/engines/を含むパスを使用する。"""
         with patch(
-            "notebooklm_enterprise_experiments_py.infrastructure.external."
+            "notebooklm_enterprise_experiments_py.services."
             "vertex_ai_search_service.discoveryengine.SearchServiceClient"
         ):
             service = VertexAISearchService(
@@ -164,12 +164,12 @@ class TestVertexAISearchService:
         with (
             patch.dict("os.environ", {}, clear=True),
             patch(
-                "notebooklm_enterprise_experiments_py.infrastructure.external."
+                "notebooklm_enterprise_experiments_py.services."
                 "vertex_ai_search_service.get_service_account_key_info",
                 return_value=None,
             ),
             patch(
-                "notebooklm_enterprise_experiments_py.infrastructure.external."
+                "notebooklm_enterprise_experiments_py.services."
                 "vertex_ai_search_service.get_service_account_key_path",
                 return_value=None,
             ),
